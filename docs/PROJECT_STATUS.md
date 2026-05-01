@@ -69,8 +69,8 @@
 
 ## Phase 8: Game Detail Deep Dive - COMPLETE ✅
 
-**Commit Hash:** (pending)
-**Pushed:** No
+**Commit Hash:** 618d1f2
+**Pushed:** Yes (origin/main)
 
 ### What Was Implemented
 
@@ -123,9 +123,6 @@
 ✅ lint: No errors
 ✅ test: 105 tests passing (83 previous + 22 new)
 ✅ build: 228.68 kB (success)
-```
-✅ test: 83 tests passing (55 original + 28 new)
-✅ build: 238.08 kB (success)
 ```
 
 ---
@@ -330,13 +327,16 @@ All scenarios tested and passing:
 
 ---
 
-## Next Phase: Phase 9 - Performance & Polish (PROPOSED)
+## Next Phase: Phase 9 - Game History & Deep Dive (PROPOSED)
+
+### Known Limitation
+GameDetailPage currently only works for today's games (ESPN API date-based). Historical games cannot be viewed.
 
 ### Proposed Objectives
 
-1. **Route-based code splitting** - Lazy load GameDetailPage
-2. **Bundle size optimization** - Analyze and reduce initial load
-3. **Data enhancement** - Quarter-by-quarter from API when available
+1. **Game History** - Allow viewing past games by date
+2. **Enhanced Game Detail** - Play-by-play if available, deeper stats
+3. **Performance** - Route-based code splitting (defer non-critical routes)
 4. **Polish** - UI refinements based on user feedback
 
 ### Scope (TBD based on Phase 8 review)
