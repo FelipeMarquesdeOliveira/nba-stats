@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { GameStatus } from '@domain/types';
+import { Game, GameStatus } from '@domain/types';
 import { useGames } from '@frontend/hooks/useGames';
 import './GameListPage.css';
 
@@ -7,8 +7,8 @@ function GameListPage() {
   const navigate = useNavigate();
   const { games, loading, error, refetch, isStale, lastUpdated } = useGames();
 
-  const handleGameClick = (gameId: string) => {
-    navigate(`/games/${gameId}`);
+  const handleGameClick = (game: Game) => {
+    navigate(`/games/${game.id}`, { state: { game } });
   };
 
   const getStatusClass = (status: GameStatus) => {
@@ -101,10 +101,10 @@ function GameListPage() {
               <div
                 key={game.id}
                 className="game-card"
-                onClick={() => handleGameClick(game.id)}
+                onClick={() => handleGameClick(game)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && handleGameClick(game.id)}
+                onKeyDown={(e) => e.key === 'Enter' && handleGameClick(game)}
               >
                 <div className="game-card-header">
                   <span className={`game-status ${getStatusClass(game.status)}`}>

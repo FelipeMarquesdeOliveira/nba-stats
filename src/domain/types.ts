@@ -302,6 +302,15 @@ export interface BoxScore {
   players: BoxScorePlayer[];
   teamStats?: Record<string, Record<string, number>>;
   highlights: GameHighlights[];
+  /** Quarter-by-quarter scores. Only populated if API provides this data. */
+  quarterScores?: QuarterScore[];
+}
+
+export interface QuarterScore {
+  period: number;
+  homeScore: number;
+  awayScore: number;
+  periodType?: PeriodType;
 }
 
 // =============================================================================

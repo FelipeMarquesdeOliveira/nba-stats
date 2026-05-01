@@ -4,10 +4,31 @@ import './PregameView.css';
 
 interface PregameViewProps {
   game: Game;
+  recentGames?: Game[];
 }
 
-function PregameView({ game }: PregameViewProps) {
+/**
+ * Check if a team is playing back-to-back (B2B)
+ * Returns true if the team played a game yesterday
+ */
+function isBackToBack(teamId: string, gameDate: string, recentGames: Game[]): boolean {
+  const gameTime = new Date(gameDate).getTime();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+
+  // Check if team played on previous day
+  return recentGames.some(g => {
+    if (g.id.includes(teamId)) return false; // Skip same game
+    const prevGameTime = new Date(g.scheduledAt).getTime();
+    const daysDiff = (gameTime - prevGameTime) / oneDayMs;
+    return daysDiff >= 0.9 && daysDiff <= 1.1; // ~1 day difference
+  });
+}
+
+function PregameView({ game, recentGames = [] }: PregameViewProps) {
   const { injuries, loading, error, refetch, isStale, lastUpdated, circuitOpen } = useInjuries();
+
+  const homeB2B = isBackToBack(game.homeTeam.id, game.scheduledAt, recentGames);
+  const awayB2B = isBackToBack(game.awayTeam.id, game.scheduledAt, recentGames);
 
   // For pregame, we don't have real lineup data yet - show that it's not available
   const homeInjuries = injuries.filter(i =>
@@ -98,6 +119,7 @@ function PregameView({ game }: PregameViewProps) {
             name: game.awayTeam.name,
             shortName: game.awayTeam.shortName,
           }}
+          isBackToBack={awayB2B}
         />
         <div className="vs-divider">VS</div>
         <TeamColumn
@@ -106,6 +128,7 @@ function PregameView({ game }: PregameViewProps) {
             name: game.homeTeam.name,
             shortName: game.homeTeam.shortName,
           }}
+          isBackToBack={homeB2B}
         />
       </div>
 
@@ -144,14 +167,16 @@ interface TeamColumnProps {
     name: string;
     shortName: string;
   };
+  isBackToBack?: boolean;
 }
 
-function TeamColumn({ teamData }: TeamColumnProps) {
+function TeamColumn({ teamData, isBackToBack }: TeamColumnProps) {
   return (
     <div className="team-column">
       <div className="team-header">
         <span className="team-abbr">{teamData.abbreviation}</span>
         <span className="team-name">{teamData.name}</span>
+        {isBackToBack && <span className="b2b-badge" title="Back-to-back">B2B</span>}
       </div>
       <div className="section-title">Escalação Provável</div>
       <div className="unavailable-data">

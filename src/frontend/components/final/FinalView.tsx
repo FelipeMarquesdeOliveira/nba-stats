@@ -1,4 +1,4 @@
-import { Game } from '@domain/types';
+import { Game, PeriodType } from '@domain/types';
 import { useLiveGame } from '@frontend/hooks/useLiveGame';
 import './FinalView.css';
 
@@ -112,6 +112,14 @@ function FinalView({ game }: FinalViewProps) {
           <span className="team-name">{game.homeTeam.name}</span>
         </div>
       </div>
+
+      {boxscore.quarterScores && boxscore.quarterScores.length > 0 && (
+        <QuarterByQuarter
+          quarterScores={boxscore.quarterScores}
+          homeAbbr={game.homeTeam.abbreviation}
+          awayAbbr={game.awayTeam.abbreviation}
+        />
+      )}
 
       <div className="game-summary">
         <h3>Game Summary</h3>
@@ -237,6 +245,57 @@ interface TeamBoxScoreProps {
     minutesPlayed: string;
     isStarter?: boolean;
   }>;
+}
+
+interface QuarterByQuarterProps {
+  quarterScores: Array<{
+    period: number;
+    homeScore: number;
+    awayScore: number;
+    periodType?: PeriodType;
+  }>;
+  homeAbbr: string;
+  awayAbbr: string;
+}
+
+function QuarterByQuarter({ quarterScores, homeAbbr, awayAbbr }: QuarterByQuarterProps) {
+  const formatPeriod = (qs: QuarterByQuarterProps['quarterScores'][0]) => {
+    if (qs.periodType === PeriodType.OVERTIME) return 'OT';
+    if (qs.periodType === PeriodType.HALF) return 'H';
+    return `Q${qs.period}`;
+  };
+
+  const totalHome = quarterScores.reduce((sum, qs) => sum + qs.homeScore, 0);
+  const totalAway = quarterScores.reduce((sum, qs) => sum + qs.awayScore, 0);
+
+  return (
+    <div className="quarter-section">
+      <h3>Quarter by Quarter</h3>
+      <div className="quarter-grid">
+        <div className="quarter-header">
+          <span className="quarter-team-label"></span>
+          {quarterScores.map((qs, idx) => (
+            <span key={idx} className="quarter-period">{formatPeriod(qs)}</span>
+          ))}
+          <span className="quarter-period">T</span>
+        </div>
+        <div className="quarter-row">
+          <span className="quarter-team-label">{awayAbbr}</span>
+          {quarterScores.map((qs, idx) => (
+            <span key={idx} className="quarter-score">{qs.awayScore}</span>
+          ))}
+          <span className="quarter-score quarter-total">{totalAway}</span>
+        </div>
+        <div className="quarter-row">
+          <span className="quarter-team-label">{homeAbbr}</span>
+          {quarterScores.map((qs, idx) => (
+            <span key={idx} className="quarter-score">{qs.homeScore}</span>
+          ))}
+          <span className="quarter-score quarter-total">{totalHome}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TeamBoxScore({ team, players }: TeamBoxScoreProps) {

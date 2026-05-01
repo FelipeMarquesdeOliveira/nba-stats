@@ -98,6 +98,19 @@
   font-size: 0.9rem;
 }
 
+.b2b-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.4rem;
+  background: rgba(234, 179, 8, 0.2);
+  color: #eab308;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 4px;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 .section-title {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.5);

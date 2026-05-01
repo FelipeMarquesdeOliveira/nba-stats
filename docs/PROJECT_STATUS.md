@@ -1,7 +1,7 @@
 # NBA Stats - Project Status
 
 **Last Updated:** 2026-05-01
-**Phase:** Phase 7 - Live Experience & Product Refinement (COMPLETE ✅)
+**Phase:** Phase 8 - Game Detail Deep Dive (COMPLETE ✅)
 
 ---
 
@@ -67,11 +67,63 @@
 
 ---
 
+## Phase 8: Game Detail Deep Dive - COMPLETE ✅
+
+**Commit Hash:** (pending)
+**Pushed:** No
+
+### What Was Implemented
+
+#### 1. GameDetailPage with Real Data
+
+| Feature | Implementation |
+|---------|---------------|
+| Real data via useGames | Replaced mockGames.find() with gameGateway.getGameById |
+| Route state passing | Game object passed via route state for instant navigation |
+| Loading state | Shows "Carregando jogo..." spinner |
+| Error state | Shows error message with retry |
+| Not found state | Shows "Jogo não encontrado" when gameId invalid |
+| Back button | "← Voltar" to navigate back |
+
+#### 2. FinalView Quarter-by-Quarter (Conditional)
+
+| Feature | Implementation |
+|---------|---------------|
+| Interface update | Added `quarterScores` field to BoxScore (optional) |
+| UI component | `QuarterByQuarter` component with grid layout |
+| Conditional render | Only shows when `quarterScores` data exists |
+| CSS styles | Added `.quarter-section`, `.quarter-grid` styles |
+
+#### 3. PregameView Back-to-Back Badge
+
+| Feature | Implementation |
+|---------|---------------|
+| B2B detection | `isBackToBack()` helper function |
+| Badge UI | Yellow "B2B" badge next to team name |
+| CSS styles | `.b2b-badge` with background and text styling |
+| Recent games prop | Optional `recentGames?: Game[]` for B2B calculation |
+
+#### 4. Test Coverage Added
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `FinalView.test.tsx` | 11 | Component tests (states, scoreboard, game summary, boxscore, quarter) |
+| `PregameView.test.tsx` | 8 | Component tests (states, injuries, B2B, lineup unavailability) |
+| `GameDetailPage.test.tsx` | 3 | Page tests (loading, not found, back button) |
+| **Total new** | **22** | |
+
+**All 105 tests passing across 9 test files.**
+
+---
+
 ### Verification Results
 
 ```
 ✅ typecheck: No errors
 ✅ lint: No errors
+✅ test: 105 tests passing (83 previous + 22 new)
+✅ build: 228.68 kB (success)
+```
 ✅ test: 83 tests passing (55 original + 28 new)
 ✅ build: 238.08 kB (success)
 ```
@@ -269,6 +321,7 @@ All scenarios tested and passing:
 
 ## Previous Phases
 
+- Phase 6: Reliability, Cache & Polish - COMPLETE ✅
 - Phase 5: Real Data Integration - COMPLETE ✅
 - Phase 4: Real Data Sources Validation - COMPLETE ✅
 - Phase 3: Architecture & Mock Evolution - COMPLETE ✅
@@ -277,43 +330,17 @@ All scenarios tested and passing:
 
 ---
 
-## Next Phase: Phase 8 - Game Detail Deep Dive (PROPOSED)
+## Next Phase: Phase 9 - Performance & Polish (PROPOSED)
 
-### Objectives
+### Proposed Objectives
 
-1. **Game Detail Page** - Full boxscore, play-by-play, team comparisons
-2. **PregameView enhancements** - Projected lineups, odds integration
-3. **Performance optimization** - Reduce bundle size, lazy loading
-4. **Betting odds display** - Player props and game lines (if API available)
+1. **Route-based code splitting** - Lazy load GameDetailPage
+2. **Bundle size optimization** - Analyze and reduce initial load
+3. **Data enhancement** - Quarter-by-quarter from API when available
+4. **Polish** - UI refinements based on user feedback
 
-### Proposed Deliverables
-
-#### 1. Game Detail Page
-- Complete boxscore with team stats comparison
-- Top performers highlight (pts, reb, ast leader per team)
-- Quarter-by-quarter breakdown
-- Venue and broadcast info
-
-#### 2. PregameView Enhancements
-- Probable starters with injury context
-- Back-to-back game indicator
-- Season record context (home/away)
-
-#### 3. Performance
-- Code splitting per route
-- Image lazy loading
-- Bundle size analysis and optimization
-
-#### 4. Test Coverage
-- Component tests for FinalView
-- Integration tests for GameDetailPage
-
-### Estimated Scope
-- New files: ~4-6 files
-- Modified files: ~3-4 files
-- New tests: ~20-30 tests
-- Timeline: Medium complexity
+### Scope (TBD based on Phase 8 review)
 
 ---
 
-*End of Phase 7*
+*End of Phase 8*
