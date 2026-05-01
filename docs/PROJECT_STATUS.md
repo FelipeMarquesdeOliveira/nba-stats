@@ -1,7 +1,7 @@
 # NBA Stats - Project Status
 
 **Last Updated:** 2026-05-01
-**Phase:** Phase 6 - Reliability, Cache & Polish (IMPLEMENTED)
+**Phase:** Phase 6 - Reliability, Cache & Polish (COMPLETE ✅)
 
 ---
 
@@ -12,7 +12,10 @@
 
 ---
 
-## Phase 6: Reliability, Cache & Polish - IMPLEMENTED ✅
+## Phase 6: Reliability, Cache & Polish - COMPLETE ✅
+
+**Commit Hash:** a391cac
+**Pushed:** Yes (origin/main)
 
 ### What Was Implemented
 
@@ -25,6 +28,7 @@
 | `infrastructure/Cache.ts` | In-memory cache with TTL/Stale/MaxAge |
 | `infrastructure/HttpClient.ts` | HTTP client with timeout, retry, backoff, jitter |
 | `infrastructure/index.ts` | Exports all infrastructure modules |
+| `infrastructure/validation.test.ts` | 23 functional validation tests |
 | `frontend/infrastructure/ErrorBoundary.tsx` | React Error Boundary component |
 
 #### 2. Hooks Updated
@@ -107,29 +111,113 @@ All views now show:
 
 ---
 
+### Functional Validation (23 tests)
+
+All scenarios tested and passing:
+
+**SCENARIO 1: Cache Stale Behavior**
+- ✅ Returns stale cache when within MaxAge and API fails
+- ✅ Discards cache when past MaxAge
+- ✅ Cache keys follow expected pattern
+- ✅ Cache pattern matching uses substring match
+
+**SCENARIO 2: No Cache (Error) Behavior**
+- ✅ Error thrown when cache miss and API fails
+- ✅ Circuit breaker blocks requests when OPEN
+
+**SCENARIO 3: Circuit Breaker Transitions**
+- ✅ CLOSED → OPEN after 5 failures
+- ✅ OPEN → HALF_OPEN after resetTimeout (45s for stats.nba.com)
+- ✅ HALF_OPEN → CLOSED after 2 consecutive successes (stats.nba.com)
+- ✅ HALF_OPEN → OPEN on failure in HALF_OPEN
+- ✅ ESPN circuit requires only 1 success to close (vs stats.nba.com 2)
+- ✅ Success in CLOSED resets failure count
+
+**SCENARIO 4: Retry / Timeout Behavior**
+- ✅ Retryable errors trigger retry with exponential backoff
+- ✅ Non-retryable errors do not trigger retry
+- ✅ Calculates exponential backoff with jitter
+- ✅ Respects Retry-After header over backoff for 429
+- ✅ Records failure in circuit breaker on all retries exhausted
+- ✅ HTTP status codes correctly classified retryable vs non-retryable
+
+**SCENARIO 5: UX Indicators by View**
+- ✅ LiveView shows both stale and circuit-open indicators
+- ✅ FinalView shows both stale and circuit-open indicators
+- ✅ PregameView shows circuit-open but only stale for injuries
+- ✅ GameListPage shows stale but not circuit-open
+
+---
+
 ### Verification Results
 
 ```
 ✅ typecheck: No errors
 ✅ lint: No errors (0 warnings after eslint-disable comments)
-✅ test: 32 tests passing
+✅ test: 55 tests passing (32 original + 23 validation)
 ✅ build: 236.72 kB (success)
+✅ commit: a391cac pushed to origin/main
 ```
 
 ---
 
 ### Status
 - [x] Implemented
-- [x] Tests passing
+- [x] Tests passing (55 total)
 - [x] Build successful
-- [ ] Awaiting approval for commit/push
+- [x] Committed and pushed
 
 ---
 
 ## Previous Phases
 
-- Phase 5: Real Data Integration - COMPLETE
-- Phase 4: Real Data Sources Validation - COMPLETE
-- Phase 3: Architecture & Mock Evolution - COMPLETE
-- Phase 2: Game-Centered UI - COMPLETE
-- Phase 1: Project Setup - COMPLETE
+- Phase 5: Real Data Integration - COMPLETE ✅
+- Phase 4: Real Data Sources Validation - COMPLETE ✅
+- Phase 3: Architecture & Mock Evolution - COMPLETE ✅
+- Phase 2: Game-Centered UI - COMPLETE ✅
+- Phase 1: Project Setup - COMPLETE ✅
+
+---
+
+## Next Phase: Phase 7 - Live Experience & Product Refinement (PROPOSED)
+
+### Objectives
+
+1. **Refinement based on real data** - Address quirks/anomalies discovered with real NBA data
+2. **Live experience improvements** - Enhanced on-court detection, real-time updates
+3. **Starter estimation upgrade** - Stronger heuristics for predicting starting lineups
+4. **Test coverage expansion** - Integration tests and component tests
+
+### Proposed Deliverables
+
+#### 1. On-Court & Starter Refinement
+- Improve `detectOnCourtStatus` heuristic with more game context
+- Add confidence level to starters (confirmed vs estimated)
+- Handle edge cases: blowouts, injuries, trades
+
+#### 2. Live Experience
+- Visual indicators for scoring runs (momentum shifts)
+- Enhanced game clock display
+- Better handling of period transitions
+- Pre-game countdown for scheduled games
+
+#### 3. Data Quality
+- Validate boxscore data completeness
+- Handle missing/null player statistics gracefully
+- Add data freshness indicators per field
+
+#### 4. Test Coverage
+- Integration tests for gateways (with mocked HTTP)
+- Component tests for LiveView, FinalView, PregameView
+- Hook tests for useGames, useLiveGame, useInjuries
+- Circuit breaker integration tests
+
+### Estimated Scope
+- New files: ~5-8 files (adapters, tests)
+- Modified files: ~4-6 files (hooks, views)
+- New tests: ~40-60 tests
+- Timeline: Medium complexity
+
+---
+
+*End of Phase 6*
