@@ -1,0 +1,200 @@
+.live-view {
+  color: #fff;
+}
+
+.live-scoreboard {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.scoreboard-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 150px;
+}
+
+.scoreboard-team .team-abbr {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.scoreboard-team .team-score {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1;
+}
+
+.scoreboard-team .team-name {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.5rem;
+}
+
+.scoreboard-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.live-indicator {
+  background: #ef4444;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.game-clock {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.live-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.players-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-header h3 {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.on-court-badge {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.players-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.players-table th {
+  text-align: left;
+  padding: 0.75rem 0.5rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.players-table td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.9rem;
+}
+
+.players-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.players-table tbody tr.on-court {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.player-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.odds-cell {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: 2px;
+}
+
+.pct-cell {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.starter-badge {
+  background: #646cff;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.player-cell .player-name {
+  font-weight: 500;
+}
+
+.player-cell .player-pos {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+}
+
+.court-indicator {
+  color: #22c55e;
+  font-size: 0.6rem;
+  margin-left: 0.25rem;
+}
+
+.pts-cell {
+  font-weight: 600;
+  color: #fff;
+}
+
+.line-cell {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.rem-cell {
+  min-width: 70px;
+}
+
+.min-cell {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+}

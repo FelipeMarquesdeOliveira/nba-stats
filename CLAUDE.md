@@ -70,6 +70,46 @@ src/data-collection/providers/
 └── betting-odds/      # Linhas de apostas (validação necessária)
 ```
 
+### Interface Gateway (Neutro, Sem Acoplamento)
+```typescript
+interface GameGateway {
+  getGamesForDate(date: string): Promise<Game[]>;
+  getGameById(gameId: string): Promise<Game | null>;
+}
+
+interface LiveGameGateway {
+  getLiveGameData(gameId: string): Promise<LiveGameData | null>;
+  subscribeToLiveGame(gameId: string): Promise<LiveGameData>;
+}
+
+interface InjuryGateway {
+  getInjuriesByGame(gameId: string): Promise<{ homeTeam, awayTeam }>;
+  getInjuriesByTeam(teamId: string): Promise<AvailabilityItem[]>;
+}
+
+interface OddsGateway {
+  getPlayerPointsLine(playerId: string, gameId: string): Promise<PlayerPointsLine | null>;
+  getTeamPointsLine(teamId: string, gameId: string): Promise<TeamPointsLine | null>;
+}
+
+interface BoxScoreGateway {
+  getBoxScore(gameId: string): Promise<BoxScore | null>;
+}
+
+interface PregameGateway {
+  getPregameData(gameId: string): Promise<PregameData | null>;
+}
+```
+
+### Mocks Centralizados
+Mocks em `src/frontend/mocks/`:
+- `teams.ts` - Times mockados
+- `players.ts` - Jogadores mockados
+- `games.ts` - Jogos mockados
+- `live-game-data.ts` - Dados de jogo ao vivo
+- `pregame-data.ts` - Dados pré-jogo
+- `boxscore-data.ts` - Boxscores finais
+
 ### Interface Base de Provider
 ```typescript
 interface DataProvider {

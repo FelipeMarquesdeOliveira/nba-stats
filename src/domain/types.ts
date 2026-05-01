@@ -1,4 +1,5 @@
 // Domain Types for NBA Stats Application
+// This file is the single source of truth for all domain entities
 
 // =============================================================================
 // ENUMS
@@ -25,6 +26,20 @@ export enum PeriodType {
   QUARTER = 'Q',
   HALF = 'H',
   OVERTIME = 'OT',
+}
+
+export enum LineColor {
+  GREEN = 'green',
+  YELLOW = 'yellow',
+  RED = 'red',
+}
+
+export enum AvailabilityLevel {
+  OUT = 'OUT',
+  DOUBTFUL = 'DOUBTFUL',
+  QUESTIONABLE = 'QUESTIONABLE',
+  PROBABLE = 'PROBABLE',
+  AVAILABLE = 'AVAILABLE',
 }
 
 // =============================================================================
@@ -63,7 +78,7 @@ export interface Game {
   homeScore: number;
   awayScore: number;
   status: GameStatus;
-  scheduledAt: string; // ISO date string
+  scheduledAt: string;
   period?: number;
   periodType?: PeriodType;
   clock?: string;
@@ -71,14 +86,106 @@ export interface Game {
   broadcaster?: string;
 }
 
-export interface Injury {
-  id: string;
-  playerId: string;
-  playerName: string;
-  teamId: string;
+// =============================================================================
+// SEASON CONTEXT
+// =============================================================================
+
+export interface SeasonContext {
+  season: string;
+  gameNumber: number;
+  record: string;
+  conferenceRank: number;
+  divisionRank?: number;
+}
+
+export interface TeamSeasonRecord {
+  team: Team;
+  season: string;
+  wins: number;
+  losses: number;
+  conferenceRank: number;
+  divisionRank?: number;
+  homeRecord: string;
+  awayRecord: string;
+  lastTen: string;
+}
+
+// =============================================================================
+// PREGAME TYPES
+// =============================================================================
+
+export interface AvailabilityItem {
+  player: Player;
   status: InjuryStatus;
-  description?: string;
-  updatedAt: string;
+  reason?: string;
+  returnDate?: string;
+}
+
+export interface PregameData {
+  gameId: string;
+  scheduledAt: string;
+  venue: string;
+  broadcaster?: string;
+  homeTeam: {
+    team: Team;
+    starters: Player[];
+    availability: AvailabilityItem[];
+    seasonRecord?: TeamSeasonRecord;
+  };
+  awayTeam: {
+    team: Team;
+    starters: Player[];
+    availability: AvailabilityItem[];
+    seasonRecord?: TeamSeasonRecord;
+  };
+}
+
+// =============================================================================
+// LIVE GAME TYPES
+// =============================================================================
+
+export interface LivePlayerStats {
+  player: Player;
+  points: number;
+  rebounds: number;
+  assists: number;
+  steals: number;
+  blocks: number;
+  turnovers: number;
+  minutesPlayed: string;
+  fieldGoalsMade: number;
+  fieldGoalsAttempted: number;
+  threePointersMade: number;
+  threePointersAttempted: number;
+  freeThrowsMade: number;
+  freeThrowsAttempted: number;
+  plusMinus: number;
+  isOnCourt: boolean;
+  isStarter: boolean;
+  pointsLine: number;
+  overOdds: number;
+  underOdds: number;
+  pointsRemaining: number;
+  lineColor: LineColor;
+}
+
+export interface LiveGameData {
+  gameId: string;
+  homeTeam: {
+    team: Team;
+    players: LivePlayerStats[];
+    score: number;
+  };
+  awayTeam: {
+    team: Team;
+    players: LivePlayerStats[];
+    score: number;
+  };
+  period: number;
+  periodType: PeriodType;
+  clock: string;
+  possession?: string;
+  lastPlay?: string;
 }
 
 // =============================================================================
@@ -93,6 +200,7 @@ export interface PlayerPointsLine {
   underOdds: number;
   bookmaker: string;
   updatedAt: string;
+  movement?: 'up' | 'down' | 'stable';
 }
 
 export interface TeamPointsLine {
@@ -106,20 +214,25 @@ export interface TeamPointsLine {
 }
 
 // =============================================================================
-// LIVE DATA TYPES
+// BOXSCORE / FINAL GAME TYPES
 // =============================================================================
 
-export interface LivePlayerState {
-  playerId: string;
-  playerName: string;
-  teamId: string;
+export interface BoxScorePlayer extends PlayerGameStats {
+  fieldGoalPct: number;
+  threePointPct: number;
+  freeThrowPct: number;
+  efficiency: number;
+}
+
+export interface PlayerGameStats {
+  player: Player;
   points: number;
   assists: number;
   rebounds: number;
-  minutesPlayed: string;
   steals: number;
   blocks: number;
   turnovers: number;
+  minutesPlayed: string;
   fieldGoalsMade: number;
   fieldGoalsAttempted: number;
   threePointersMade: number;
@@ -127,22 +240,86 @@ export interface LivePlayerState {
   freeThrowsMade: number;
   freeThrowsAttempted: number;
   plusMinus: number;
-  isOnCourt: boolean;
-  isStarter: boolean;
-  status: 'active' | 'bench' | 'out';
 }
 
-export interface LiveGameData {
+export interface TeamStats {
+  teamId: string;
+  teamName: string;
+  points: number;
+  fieldGoalsMade: number;
+  fieldGoalsAttempted: number;
+  threePointersMade: number;
+  threePointersAttempted: number;
+  freeThrowsMade: number;
+  freeThrowsAttempted: number;
+  rebounds: number;
+  assists: number;
+  steals: number;
+  blocks: number;
+  turnovers: number;
+}
+
+export interface GameHighlights {
+  type: 'top-scorer' | 'double-double' | 'triple-double' | 'career-high' | 'game-high';
+  player: Player;
+  value: number | string;
+  description: string;
+}
+
+export interface BoxScore {
   gameId: string;
-  homeTeamPlayers: LivePlayerState[];
-  awayTeamPlayers: LivePlayerState[];
-  homeScore: number;
-  awayScore: number;
-  period: number;
-  periodType: PeriodType;
-  clock: string;
-  possession?: string; // teamId
-  lastPlay?: string;
+  homeTeam: {
+    team: Team;
+    stats: TeamStats;
+    players: BoxScorePlayer[];
+    highlights: GameHighlights[];
+  };
+  awayTeam: {
+    team: Team;
+    stats: TeamStats;
+    players: BoxScorePlayer[];
+    highlights: GameHighlights[];
+  };
+}
+
+// =============================================================================
+// GATEWAY INTERFACES (Neutral, Source-Agnostic)
+// =============================================================================
+
+export interface GameGateway {
+  getGamesForDate(date: string): Promise<Game[]>;
+  getGameById(gameId: string): Promise<Game | null>;
+}
+
+export interface LiveGameGateway {
+  getLiveGameData(gameId: string): Promise<LiveGameData | null>;
+  subscribeToLiveGame(gameId: string): Promise<LiveGameData>;
+}
+
+export interface InjuryGateway {
+  getInjuriesByGame(gameId: string): Promise<{
+    homeTeam: AvailabilityItem[];
+    awayTeam: AvailabilityItem[];
+  }>;
+  getInjuriesByTeam(teamId: string): Promise<AvailabilityItem[]>;
+}
+
+export interface OddsGateway {
+  getPlayerPointsLine(playerId: string, gameId: string): Promise<PlayerPointsLine | null>;
+  getTeamPointsLine(teamId: string, gameId: string): Promise<TeamPointsLine | null>;
+  getGameOdds(gameId: string): Promise<{
+    homeSpread: number;
+    awaySpread: number;
+    overUnder: number;
+  } | null>;
+}
+
+export interface BoxScoreGateway {
+  getBoxScore(gameId: string): Promise<BoxScore | null>;
+}
+
+export interface PregameGateway {
+  getPregameData(gameId: string): Promise<PregameData | null>;
 }
 
 // =============================================================================
@@ -151,7 +328,7 @@ export interface LiveGameData {
 
 export interface DataMetadata {
   source: string;
-  collectedAt: number; // Unix timestamp in milliseconds
+  collectedAt: number;
   url: string;
   cacheHit: boolean;
   version?: string;
@@ -162,10 +339,6 @@ export interface ApiResponse<T> {
   metadata: DataMetadata;
   error?: string;
 }
-
-// =============================================================================
-// PROVIDER TYPES
-// =============================================================================
 
 export interface ProviderConfig {
   name: string;
@@ -183,10 +356,6 @@ export interface FetchOptions {
   signal?: AbortSignal;
 }
 
-// =============================================================================
-// CACHE TYPES
-// =============================================================================
-
 export interface CacheEntry<T> {
   data: T;
   metadata: DataMetadata;
@@ -194,10 +363,65 @@ export interface CacheEntry<T> {
 }
 
 export enum CacheTTL {
-  LIVE_GAME = 10_000,      // 10 seconds
-  GAME_STATISTICS = 300_000, // 5 minutes
-  INJURY_REPORT = 60_000,    // 1 minute
-  BETTING_LINE = 30_000,     // 30 seconds
-  TEAM_LIST = 3_600_000,     // 1 hour
-  PLAYER_INFO = 600_000,     // 10 minutes
+  LIVE_GAME = 10_000,
+  GAME_STATISTICS = 300_000,
+  INJURY_REPORT = 60_000,
+  BETTING_LINE = 30_000,
+  TEAM_LIST = 3_600_000,
+  PLAYER_INFO = 600_000,
+}
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
+export function getLineColor(pointsRemaining: number): LineColor {
+  if (pointsRemaining <= 3) return LineColor.GREEN;
+  if (pointsRemaining <= 5) return LineColor.YELLOW;
+  return LineColor.RED;
+}
+
+export function calculatePercentage(made: number, attempted: number): number {
+  if (attempted === 0) return 0;
+  return Math.round((made / attempted) * 1000) / 10;
+}
+
+export function calculateEfficiency(stats: PlayerGameStats): number {
+  const pts = stats.points;
+  const ast = stats.assists;
+  const trb = stats.rebounds;
+  const stl = stats.steals;
+  const blk = stats.blocks;
+  const to = stats.turnovers;
+  return pts + trb + ast + stl + blk - to;
+}
+
+export function detectHighlights(
+  playerStats: BoxScorePlayer[]
+): GameHighlights[] {
+  const highlights: GameHighlights[] = [];
+
+  for (const stats of playerStats) {
+    if (stats.points > 0) {
+      highlights.push({
+        type: 'top-scorer',
+        player: stats.player,
+        value: stats.points,
+        description: `${stats.player.name} scored ${stats.points} points`,
+      });
+    }
+
+    const doubleCategories = [stats.points, stats.rebounds, stats.assists];
+    const doubles = doubleCategories.filter((v) => v >= 10).length;
+    if (doubles >= 2) {
+      highlights.push({
+        type: doubles >= 3 ? 'triple-double' : 'double-double',
+        player: stats.player,
+        value: doubles,
+        description: `${stats.player.name} recorded a ${doubles}x double`,
+      });
+    }
+  }
+
+  return highlights.slice(0, 10);
 }

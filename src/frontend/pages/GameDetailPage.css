@@ -1,0 +1,52 @@
+.game-detail-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-header {
+  padding: 1rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.back-button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.detail-content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.game-not-found {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.game-not-found h2 {
+  color: #fff;
+  margin-bottom: 1rem;
+}
+
+.game-not-found button {
+  background: #646cff;
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
