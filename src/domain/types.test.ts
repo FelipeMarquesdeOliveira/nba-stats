@@ -7,7 +7,22 @@ import {
   LineColor,
   PlayerGameStats,
   BoxScorePlayer,
+  Player,
+  OnCourtStatus,
 } from './types';
+
+// Minimal player object for testing - only id and name are used by the functions being tested
+const createTestPlayer = (id: string, name: string): Player => ({
+  id,
+  name,
+  jerseyNumber: '0',
+  position: 'G',
+  height: '6-0',
+  weight: '200',
+  birthDate: '1990-01-01',
+  yearsExperience: 5,
+  teamId: 'team-1',
+});
 
 describe('Domain Utilities', () => {
   describe('getLineColor', () => {
@@ -57,7 +72,7 @@ describe('Domain Utilities', () => {
   describe('calculateEfficiency', () => {
     it('should calculate efficiency correctly', () => {
       const stats: PlayerGameStats = {
-        player: {} as any,
+        player: createTestPlayer('p1', 'Test Player'),
         points: 25,
         rebounds: 10,
         assists: 8,
@@ -82,7 +97,7 @@ describe('Domain Utilities', () => {
 
     it('should return negative efficiency for high turnover games', () => {
       const stats: PlayerGameStats = {
-        player: {} as any,
+        player: createTestPlayer('p2', 'Test Player 2'),
         points: 8,
         rebounds: 3,
         assists: 2,
@@ -175,8 +190,9 @@ function createMockPlayer(
   rebounds: number,
   assists: number
 ): BoxScorePlayer {
+  const player = createTestPlayer(id, name);
   return {
-    player: { id, name } as any,
+    player,
     points,
     rebounds,
     assists,
@@ -195,5 +211,8 @@ function createMockPlayer(
     threePointPct: 40,
     freeThrowPct: 80,
     efficiency: points + rebounds + assists,
+    isStarter: false,
+    isOnCourt: false,
+    onCourtStatus: 'unknown' as OnCourtStatus,
   };
 }

@@ -1,5 +1,5 @@
 import { Game } from '@domain/types';
-import { getBoxScore } from '@frontend/mocks';
+import { useLiveGame } from '@frontend/hooks/useLiveGame';
 import './FinalView.css';
 
 interface FinalViewProps {
@@ -7,13 +7,56 @@ interface FinalViewProps {
 }
 
 function FinalView({ game }: FinalViewProps) {
-  const boxScore = getBoxScore(game.id);
+  const { boxscore, loading, error, refetch, isStale, lastUpdated, circuitOpen } = useLiveGame(
+    game.id,
+    'final'
+  );
 
-  if (!boxScore) {
+  if (loading) {
+    return (
+      <div className="final-view">
+        <div className="loading-state">
+          <div className="loading-spinner">⏳</div>
+          <p>Carregando boxscore...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (circuitOpen) {
+    return (
+      <div className="final-view">
+        <div className="circuit-open-state">
+          <span className="circuit-icon">🔌</span>
+          <p className="circuit-title">Serviço temporariamente indisponível</p>
+          <p className="circuit-hint">Aguarde alguns segundos e tente novamente</p>
+          <button onClick={refetch} className="retry-button">
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="final-view">
+        <div className="error-state">
+          <p className="error-title">Erro ao carregar boxscore</p>
+          <p className="error-message">{error}</p>
+          <button onClick={refetch} className="retry-button">
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!boxscore) {
     return (
       <div className="final-view">
         <div className="no-data-message">
-          <p>Box score not available for this game.</p>
+          <p>Boxscore não disponível para este jogo.</p>
         </div>
       </div>
     );
@@ -24,12 +67,29 @@ function FinalView({ game }: FinalViewProps) {
     return ((made / attempted) * 100).toFixed(1);
   };
 
+  const homeStats = boxscore.teamStats?.[game.homeTeam.abbreviation] || {};
+  const awayStats = boxscore.teamStats?.[game.awayTeam.abbreviation] || {};
+  const showStaleIndicator = isStale && boxscore;
+
   return (
     <div className="final-view">
+      {showStaleIndicator && (
+        <div className="stale-indicator">
+          <span className="warning-icon">⚠️</span>
+          <span>
+            Dados podem estar desatualizados
+            {lastUpdated && ` (última att: há ${Math.floor((Date.now() - lastUpdated.getTime()) / 60000)} min)`}
+          </span>
+          <button onClick={refetch} className="stale-refresh-button">
+            Atualizar
+          </button>
+        </div>
+      )}
+
       <div className="final-scoreboard">
         <div className="final-team">
           <span className="team-abbr">{game.awayTeam.abbreviation}</span>
-          <span className="team-score">{game.awayScore}</span>
+          <span className="team-score">{boxscore.awayScore}</span>
           <span className="team-name">{game.awayTeam.name}</span>
         </div>
 
@@ -40,7 +100,7 @@ function FinalView({ game }: FinalViewProps) {
 
         <div className="final-team">
           <span className="team-abbr">{game.homeTeam.abbreviation}</span>
-          <span className="team-score">{game.homeScore}</span>
+          <span className="team-score">{boxscore.homeScore}</span>
           <span className="team-name">{game.homeTeam.name}</span>
         </div>
       </div>
@@ -53,34 +113,34 @@ function FinalView({ game }: FinalViewProps) {
             <div className="stat-row">
               <span>Field Goals</span>
               <span>
-                {boxScore.awayTeam.stats.fieldGoalsMade}-
-                {boxScore.awayTeam.stats.fieldGoalsAttempted} (
-                {fgPct(boxScore.awayTeam.stats.fieldGoalsMade, boxScore.awayTeam.stats.fieldGoalsAttempted)}%)
+                {awayStats.FGM || 0}-
+                {awayStats.FGA || 0} (
+                {fgPct(awayStats.FGM || 0, awayStats.FGA || 0)}%)
               </span>
             </div>
             <div className="stat-row">
               <span>3-Pointers</span>
               <span>
-                {boxScore.awayTeam.stats.threePointersMade}-
-                {boxScore.awayTeam.stats.threePointersAttempted} (
-                {fgPct(boxScore.awayTeam.stats.threePointersMade, boxScore.awayTeam.stats.threePointersAttempted)}%)
+                {awayStats.FG3M || 0}-
+                {awayStats.FG3A || 0} (
+                {fgPct(awayStats.FG3M || 0, awayStats.FG3A || 0)}%)
               </span>
             </div>
             <div className="stat-row">
               <span>Free Throws</span>
               <span>
-                {boxScore.awayTeam.stats.freeThrowsMade}-
-                {boxScore.awayTeam.stats.freeThrowsAttempted} (
-                {fgPct(boxScore.awayTeam.stats.freeThrowsMade, boxScore.awayTeam.stats.freeThrowsAttempted)}%)
+                {awayStats.FTM || 0}-
+                {awayStats.FTA || 0} (
+                {fgPct(awayStats.FTM || 0, awayStats.FTA || 0)}%)
               </span>
             </div>
             <div className="stat-row">
               <span>Rebounds</span>
-              <span>{boxScore.awayTeam.stats.rebounds}</span>
+              <span>{awayStats.REB || 0}</span>
             </div>
             <div className="stat-row">
               <span>Assists</span>
-              <span>{boxScore.awayTeam.stats.assists}</span>
+              <span>{awayStats.AST || 0}</span>
             </div>
           </div>
 
@@ -89,34 +149,34 @@ function FinalView({ game }: FinalViewProps) {
             <div className="stat-row">
               <span>Field Goals</span>
               <span>
-                {boxScore.homeTeam.stats.fieldGoalsMade}-
-                {boxScore.homeTeam.stats.fieldGoalsAttempted} (
-                {fgPct(boxScore.homeTeam.stats.fieldGoalsMade, boxScore.homeTeam.stats.fieldGoalsAttempted)}%)
+                {homeStats.FGM || 0}-
+                {homeStats.FGA || 0} (
+                {fgPct(homeStats.FGM || 0, homeStats.FGA || 0)}%)
               </span>
             </div>
             <div className="stat-row">
               <span>3-Pointers</span>
               <span>
-                {boxScore.homeTeam.stats.threePointersMade}-
-                {boxScore.homeTeam.stats.threePointersAttempted} (
-                {fgPct(boxScore.homeTeam.stats.threePointersMade, boxScore.homeTeam.stats.threePointersAttempted)}%)
+                {homeStats.FG3M || 0}-
+                {homeStats.FG3A || 0} (
+                {fgPct(homeStats.FG3M || 0, homeStats.FG3A || 0)}%)
               </span>
             </div>
             <div className="stat-row">
               <span>Free Throws</span>
               <span>
-                {boxScore.homeTeam.stats.freeThrowsMade}-
-                {boxScore.homeTeam.stats.freeThrowsAttempted} (
-                {fgPct(boxScore.homeTeam.stats.freeThrowsMade, boxScore.homeTeam.stats.freeThrowsAttempted)}%)
+                {homeStats.FTM || 0}-
+                {homeStats.FTA || 0} (
+                {fgPct(homeStats.FTM || 0, homeStats.FTA || 0)}%)
               </span>
             </div>
             <div className="stat-row">
               <span>Rebounds</span>
-              <span>{boxScore.homeTeam.stats.rebounds}</span>
+              <span>{homeStats.REB || 0}</span>
             </div>
             <div className="stat-row">
               <span>Assists</span>
-              <span>{boxScore.homeTeam.stats.assists}</span>
+              <span>{homeStats.AST || 0}</span>
             </div>
           </div>
         </div>
@@ -125,16 +185,16 @@ function FinalView({ game }: FinalViewProps) {
       <div className="boxscore-section">
         <h3>Box Score</h3>
         <div className="boxscore-grid">
-          <TeamBoxScore team={game.awayTeam} boxScoreTeam={boxScore.awayTeam} />
-          <TeamBoxScore team={game.homeTeam} boxScoreTeam={boxScore.homeTeam} />
+          <TeamBoxScore team={game.awayTeam} players={boxscore.awayTeam.players} />
+          <TeamBoxScore team={game.homeTeam} players={boxscore.homeTeam.players} />
         </div>
       </div>
 
-      {boxScore.homeTeam.highlights.length > 0 && (
+      {boxscore.highlights && boxscore.highlights.length > 0 && (
         <div className="highlights-section">
           <h3>Game Highlights</h3>
           <div className="highlights-grid">
-            {boxScore.homeTeam.highlights.slice(0, 4).map((highlight, idx) => (
+            {boxscore.highlights.slice(0, 4).map((highlight, idx) => (
               <div key={idx} className="highlight-card">
                 <span className={`highlight-badge badge-${highlight.type}`}>
                   {highlight.type.replace('-', ' ')}
@@ -148,28 +208,31 @@ function FinalView({ game }: FinalViewProps) {
           </div>
         </div>
       )}
+
+      <div className="data-source-note">
+        <p>Fonte: stats.nba.com</p>
+      </div>
     </div>
   );
 }
 
 interface TeamBoxScoreProps {
   team: Game['homeTeam'];
-  boxScoreTeam: {
-    players: Array<{
-      player: { id: string; name: string; jerseyNumber: string; position: string };
-      points: number;
-      rebounds: number;
-      assists: number;
-      fieldGoalPct: number;
-      threePointPct: number;
-      freeThrowPct: number;
-      minutesPlayed: string;
-    }>;
-  };
+  players: Array<{
+    player: { id: string; name: string; jerseyNumber?: string; position: string };
+    points: number;
+    rebounds: number;
+    assists: number;
+    fieldGoalPct: number;
+    threePointPct: number;
+    freeThrowPct: number;
+    minutesPlayed: string;
+    isStarter?: boolean;
+  }>;
 }
 
-function TeamBoxScore({ team, boxScoreTeam }: TeamBoxScoreProps) {
-  const sortedPlayers = [...boxScoreTeam.players].sort(
+function TeamBoxScore({ team, players }: TeamBoxScoreProps) {
+  const sortedPlayers = [...players].sort(
     (a, b) => b.points - a.points
   );
 

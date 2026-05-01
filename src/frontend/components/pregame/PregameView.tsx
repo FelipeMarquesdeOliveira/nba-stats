@@ -1,5 +1,5 @@
-import { Game, PregameData } from '@domain/types';
-import { getPregameData } from '@frontend/mocks';
+import { Game, InjuryStatus, AvailabilityItem } from '@domain/types';
+import { useInjuries } from '@frontend/hooks/useInjuries';
 import './PregameView.css';
 
 interface PregameViewProps {
@@ -7,120 +7,185 @@ interface PregameViewProps {
 }
 
 function PregameView({ game }: PregameViewProps) {
-  const pregameData = getPregameData(game.id);
+  const { injuries, loading, error, refetch, isStale, lastUpdated, circuitOpen } = useInjuries();
 
-  if (!pregameData) {
+  // For pregame, we don't have real lineup data yet - show that it's not available
+  const homeInjuries = injuries.filter(i =>
+    i.teamName?.toLowerCase().includes(game.homeTeam.abbreviation.toLowerCase()) ||
+    i.teamName?.toLowerCase().includes(game.homeTeam.name.toLowerCase())
+  );
+
+  const awayInjuries = injuries.filter(i =>
+    i.teamName?.toLowerCase().includes(game.awayTeam.abbreviation.toLowerCase()) ||
+    i.teamName?.toLowerCase().includes(game.awayTeam.name.toLowerCase())
+  );
+
+  if (loading) {
     return (
       <div className="pregame-view">
-        <div className="no-data-message">
-          <p>Pregame data not available for this game.</p>
+        <div className="loading-state">
+          <div className="loading-spinner">⏳</div>
+          <p>Carregando dados pré-jogo...</p>
         </div>
       </div>
     );
   }
 
+  if (circuitOpen) {
+    return (
+      <div className="pregame-view">
+        <div className="circuit-open-state">
+          <span className="circuit-icon">🔌</span>
+          <p className="circuit-title">Serviço temporariamente indisponível</p>
+          <p className="circuit-hint">Aguarde alguns segundos e tente novamente</p>
+          <button onClick={refetch} className="retry-button">
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="pregame-view">
+        <div className="error-state">
+          <p className="error-title">Erro ao carregar dados</p>
+          <p className="error-message">{error}</p>
+          <button onClick={refetch} className="retry-button">
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const showStaleIndicator = isStale && injuries.length > 0;
+
   return (
     <div className="pregame-view">
+      {showStaleIndicator && (
+        <div className="stale-indicator">
+          <span className="warning-icon">⚠️</span>
+          <span>
+            Dados podem estar desatualizados
+            {lastUpdated && ` (última att: há ${Math.floor((Date.now() - lastUpdated.getTime()) / 60000)} min)`}
+          </span>
+          <button onClick={refetch} className="stale-refresh-button">
+            Atualizar
+          </button>
+        </div>
+      )}
+
       <div className="pregame-header">
-        <h2>Pregame</h2>
+        <h2>Pré-Jogo</h2>
         <p className="game-time">
-          {pregameData.scheduledAt} • {pregameData.venue}
-          {pregameData.broadcaster && ` • ${pregameData.broadcaster}`}
+          {new Date(game.scheduledAt).toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+          {game.broadcaster && ` • ${game.broadcaster}`}
         </p>
       </div>
 
-      <div className="season-records">
-        <TeamRecordCard teamData={pregameData.awayTeam} side="away" />
-        <TeamRecordCard teamData={pregameData.homeTeam} side="home" />
-      </div>
-
       <div className="matchup-section">
-        <TeamColumn teamData={pregameData.awayTeam} />
+        <TeamColumn
+          teamData={{
+            abbreviation: game.awayTeam.abbreviation,
+            name: game.awayTeam.name,
+            shortName: game.awayTeam.shortName,
+          }}
+        />
         <div className="vs-divider">VS</div>
-        <TeamColumn teamData={pregameData.homeTeam} />
+        <TeamColumn
+          teamData={{
+            abbreviation: game.homeTeam.abbreviation,
+            name: game.homeTeam.name,
+            shortName: game.homeTeam.shortName,
+          }}
+        />
       </div>
 
       <div className="availability-section">
         <h3>Availability Report</h3>
 
         <div className="availability-columns">
-          <TeamAvailability teamData={pregameData.awayTeam} />
-          <TeamAvailability teamData={pregameData.homeTeam} />
+          <TeamAvailability
+            teamName={game.awayTeam.shortName}
+            injuries={awayInjuries}
+          />
+          <TeamAvailability
+            teamName={game.homeTeam.shortName}
+            injuries={homeInjuries}
+          />
+        </div>
+
+        <div className="data-source-note">
+          <p>Fonte: ESPN Injuries</p>
+        </div>
+
+        <div className="pregame-note">
+          <p className="note-text">
+            <span className="note-label">⚠️ Lineups:</span> Dados de prováveis titulares ainda não disponíveis via API.
+            Funcionalidade em desenvolvimento.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-interface TeamRecordCardProps {
-  teamData: PregameData['homeTeam'];
-  side: 'home' | 'away';
-}
-
-function TeamRecordCard({ teamData, side }: TeamRecordCardProps) {
-  if (!teamData.seasonRecord) return null;
-
-  const { wins, losses, conferenceRank, homeRecord, awayRecord, lastTen } = teamData.seasonRecord;
-
-  return (
-    <div className={`record-card record-${side}`}>
-      <div className="record-team">{teamData.team.shortName}</div>
-      <div className="record-details">
-        <span className="record-main">{wins}-{losses}</span>
-        <span className="record-rank">#{conferenceRank} East</span>
-      </div>
-      <div className="record-meta">
-        <span>Home: {homeRecord}</span>
-        <span>Away: {awayRecord}</span>
-        <span>L10: {lastTen}</span>
-      </div>
-    </div>
-  );
-}
-
 interface TeamColumnProps {
-  teamData: PregameData['homeTeam'];
+  teamData: {
+    abbreviation: string;
+    name: string;
+    shortName: string;
+  };
 }
 
 function TeamColumn({ teamData }: TeamColumnProps) {
   return (
     <div className="team-column">
       <div className="team-header">
-        <span className="team-abbr">{teamData.team.abbreviation}</span>
-        <span className="team-name">{teamData.team.name}</span>
+        <span className="team-abbr">{teamData.abbreviation}</span>
+        <span className="team-name">{teamData.name}</span>
       </div>
-      <div className="section-title">Probable Starters</div>
-      <ul className="player-list">
-        {teamData.starters.map((player) => (
-          <li key={player.id} className="player-item">
-            <span className="jersey">#{player.jerseyNumber}</span>
-            <span className="player-name">{player.name}</span>
-            <span className="player-pos">{player.position}</span>
-          </li>
-        ))}
-      </ul>
+      <div className="section-title">Escalação Provável</div>
+      <div className="unavailable-data">
+        <span className="unavailable-badge">Indisponível</span>
+        <p>Dados de lineup não disponíveis via API pública</p>
+      </div>
     </div>
   );
 }
 
 interface TeamAvailabilityProps {
-  teamData: PregameData['homeTeam'];
+  teamName: string;
+  injuries: AvailabilityItem[];
 }
 
-function TeamAvailability({ teamData }: TeamAvailabilityProps) {
+function TeamAvailability({ teamName, injuries }: TeamAvailabilityProps) {
   const grouped = {
-    OUT: teamData.availability.filter((a) => a.status === 'Out'),
-    DOUBTFUL: teamData.availability.filter((a) => a.status === 'Doubtful'),
-    QUESTIONABLE: teamData.availability.filter((a) => a.status === 'Questionable'),
-    PROBABLE: teamData.availability.filter((a) => a.status === 'Probable'),
+    OUT: injuries.filter((a: AvailabilityItem) => a.status === InjuryStatus.OUT),
+    DOUBTFUL: injuries.filter((a: AvailabilityItem) => a.status === InjuryStatus.DOUBTFUL),
+    QUESTIONABLE: injuries.filter((a: AvailabilityItem) => a.status === InjuryStatus.QUESTIONABLE),
+    PROBABLE: injuries.filter((a: AvailabilityItem) => a.status === InjuryStatus.PROBABLE),
   };
 
   const hasAny = Object.values(grouped).some((arr) => arr.length > 0);
 
   return (
     <div className="availability-team">
-      <h4>{teamData.team.shortName}</h4>
-      {!hasAny && <p className="no-availability">No injuries reported</p>}
+      <h4>{teamName}</h4>
+      {!hasAny && (
+        <div className="no-injuries">
+          <p className="no-injuries-text">Nenhuma lesão reportada</p>
+          <p className="no-injuries-subtext">Dados baseados em relatórios públicos</p>
+        </div>
+      )}
       {grouped.OUT.length > 0 && (
         <AvailabilityGroup label="OUT" items={grouped.OUT} color="red" />
       )}
@@ -139,7 +204,7 @@ function TeamAvailability({ teamData }: TeamAvailabilityProps) {
 
 interface AvailabilityGroupProps {
   label: string;
-  items: PregameData['homeTeam']['availability'];
+  items: AvailabilityItem[];
   color: 'red' | 'orange' | 'yellow' | 'green';
 }
 
@@ -147,11 +212,9 @@ function AvailabilityGroup({ label, items, color }: AvailabilityGroupProps) {
   return (
     <div className={`availability-group group-${color}`}>
       <div className="group-label">{label}</div>
-      {items.map((item) => (
-        <div key={item.player.id} className="availability-item">
-          <span className="avail-player">
-            #{item.player.jerseyNumber} {item.player.name}
-          </span>
+      {items.map((item, idx) => (
+        <div key={idx} className="availability-item">
+          <span className="avail-player">{item.player.name}</span>
           {item.reason && <span className="avail-reason">{item.reason}</span>}
         </div>
       ))}

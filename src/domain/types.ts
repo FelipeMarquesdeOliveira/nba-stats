@@ -34,6 +34,12 @@ export enum LineColor {
   RED = 'red',
 }
 
+export enum OnCourtStatus {
+  CONFIRMED = 'confirmed',
+  ESTIMATED = 'estimated',
+  UNKNOWN = 'unknown',
+}
+
 export enum AvailabilityLevel {
   OUT = 'OUT',
   DOUBTFUL = 'DOUBTFUL',
@@ -119,6 +125,7 @@ export interface AvailabilityItem {
   status: InjuryStatus;
   reason?: string;
   returnDate?: string;
+  teamName?: string;
 }
 
 export interface PregameData {
@@ -222,6 +229,10 @@ export interface BoxScorePlayer extends PlayerGameStats {
   threePointPct: number;
   freeThrowPct: number;
   efficiency: number;
+  isOnCourt: boolean;
+  onCourtStatus: OnCourtStatus;
+  teamAbbreviation?: string;
+  isStarter?: boolean;
 }
 
 export interface PlayerGameStats {
@@ -269,17 +280,24 @@ export interface GameHighlights {
 export interface BoxScore {
   gameId: string;
   homeTeam: {
-    team: Team;
-    stats: TeamStats;
+    abbreviation: string;
+    name: string;
     players: BoxScorePlayer[];
-    highlights: GameHighlights[];
   };
   awayTeam: {
-    team: Team;
-    stats: TeamStats;
+    abbreviation: string;
+    name: string;
     players: BoxScorePlayer[];
-    highlights: GameHighlights[];
   };
+  homeScore: number;
+  awayScore: number;
+  period?: number;
+  clock?: string;
+  gameStatus?: GameStatus;
+  lastPlay?: string;
+  players: BoxScorePlayer[];
+  teamStats?: Record<string, Record<string, number>>;
+  highlights: GameHighlights[];
 }
 
 // =============================================================================
