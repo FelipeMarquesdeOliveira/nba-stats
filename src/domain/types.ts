@@ -319,7 +319,7 @@ export interface QuarterScore {
 
 export interface GameGateway {
   getGamesForDate(date: string): Promise<Game[]>;
-  getGameById(gameId: string): Promise<Game | null>;
+  getGameById(gameId: string, date?: string): Promise<Game | null>;
 }
 
 export interface LiveGameGateway {

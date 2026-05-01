@@ -62,13 +62,14 @@ export class GameGatewayImpl implements GameGateway {
 
   /**
    * Get a single game by ID
-   * Note: Requires date since ESPN API is date-based
+   * @param gameId - The game ID
+   * @param date - Optional date in YYYY-MM-DD format. If not provided, uses today.
    */
-  async getGameById(gameId: string): Promise<Game | null> {
-    const today = new Date().toISOString().split('T')[0];
+  async getGameById(gameId: string, date?: string): Promise<Game | null> {
+    const targetDate = date || new Date().toISOString().split('T')[0];
 
     try {
-      const games = await this.getGamesForDate(today);
+      const games = await this.getGamesForDate(targetDate);
       return games.find(g => g.id === gameId) || null;
     } catch (error) {
       logger.error(DataSource.ESPN, 'getGameById', logger.generateRequestId(), {

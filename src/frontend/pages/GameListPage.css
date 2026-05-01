@@ -19,6 +19,58 @@
 .subtitle {
   color: rgba(255, 255, 255, 0.6);
   font-size: 1rem;
+  margin-top: 0.5rem;
+}
+
+.date-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.date-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: #fff;
+  font-size: 1rem;
+  color-scheme: dark;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.quick-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.quick-nav button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-nav button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.quick-nav button.active {
+  background: #646cff;
+  border-color: #646cff;
+  color: #fff;
 }
 
 .games-container {
@@ -142,4 +194,29 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.4);
   font-size: 0.85rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.empty-title {
+  font-size: 1.5rem;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.empty-message {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.5rem;
+}
+
+.empty-hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
 }

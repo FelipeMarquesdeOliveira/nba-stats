@@ -1,7 +1,7 @@
 # NBA Stats - Project Status
 
 **Last Updated:** 2026-05-01
-**Phase:** Phase 8 - Game Detail Deep Dive (COMPLETE ✅)
+**Phase:** Phase 10 - Historical Game Discovery (COMPLETE ✅)
 
 ---
 
@@ -116,13 +116,58 @@
 
 ---
 
+## Phase 9: Game History - COMPLETE ✅
+
+**Commit Hash:** (pending)
+**Pushed:** (pending)
+
+### What Was Implemented
+
+#### 1. Date in URL as Canonical Source
+
+| Feature | Implementation |
+|---------|---------------|
+| Query param `date` | `/games/:gameId?date=YYYY-MM-DD` is canonical source |
+| Date resolution priority | URL query param > route state > today |
+| GameListPage navigation | Passes date in query param when navigating to detail |
+| GameDetailPage | Resolves date on mount, fetches game from API |
+
+#### 2. GameGatewayImpl Date Support
+
+```typescript
+async getGameById(gameId: string, date?: string): Promise<Game | null> {
+  const targetDate = date || new Date().toISOString().split('T')[0];
+  const games = await this.getGamesForDate(targetDate);
+  return games.find(g => g.id === gameId) || null;
+}
+```
+
+#### 3. GameDetailPage Date Resolution
+
+```
+1. URL query param: ?date=YYYY-MM-DD
+2. Route state: navigate state passed date
+3. Fallback: undefined (uses today via gateway)
+```
+
+#### 4. Test Coverage Added
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `GameDetailPage.test.tsx` | 7 | Page tests (loading, not found, back, date resolution, route state) |
+| **Total new** | **4** | |
+
+**All 109 tests passing across 9 test files.**
+
+---
+
 ### Verification Results
 
 ```
 ✅ typecheck: No errors
-✅ lint: No errors
-✅ test: 105 tests passing (83 previous + 22 new)
-✅ build: 228.68 kB (success)
+✅ lint: No errors (0 warnings)
+✅ test: 109 tests passing (105 previous + 4 new)
+✅ build: 229.80 kB (success)
 ```
 
 ---
@@ -131,31 +176,141 @@
 
 | File | Change |
 |------|--------|
-| `domain/types.ts` | PeriodType enum added |
-| `adapters/NBAStats/normalizers.ts` | Enhanced `detectOnCourtStatus` with period-based confidence |
-| `adapters/NBAStats/boxscore.ts` | Pass period to heuristic |
-| `frontend/hooks/useLiveGame.ts` | Portuguese labels, circuit-aware polling |
-| `frontend/components/live/LiveView.tsx` | Lead indicator, confidence badge, court indicators, disclaimer |
-| `frontend/components/live/LiveView.css` | Styles for lead indicator, court indicators, disclaimer |
-| `frontend/components/final/FinalView.tsx` | Win margin display |
-| `frontend/pages/GameListPage.tsx` | Portuguese status badges |
-| `infrastructure/detectOnCourtStatus.test.ts` | NEW - 17 unit tests |
-| `frontend/components/live/LiveView.test.tsx` | NEW - 11 component tests |
+| `domain/types.ts` | `GameGateway.getGameById` accepts optional `date?: string` |
+| `data-collection/gateways/GameGatewayImpl.ts` | Uses date to fetch from correct ESPN endpoint |
+| `frontend/pages/GameListPage.tsx` | Passes date in URL query param on navigation |
+| `frontend/pages/GameDetailPage.tsx` | Resolves date with priority: URL > state > today |
+| `frontend/pages/GameDetailPage.test.tsx` | Added date resolution tests (4 new) |
+
+---
+
+### Behavior: Reload and Direct URL Access
+
+| Scenario | Behavior |
+|----------|----------|
+| Click game in list | Navigate with route state + query param (instant render) |
+| Reload GameDetailPage | Fetches from `gameGateway.getGameById(id, date)` → ESPN API |
+| Direct URL `/games/:id?date=YYYY-MM-DD` | Fetches from API for that date |
+| Direct URL `/games/:id` (no date) | Uses today's date via gateway |
+| Past game unavailable | Shows "Este jogo não está disponível para a data selecionada." |
+
+---
+
+### Current Limitation
+
+**UX for historical discovery:** While the app supports viewing past games via direct URL, there's no UI for users to discover/select past dates. They must either:
+- Have a link with `?date=` already
+- Navigate from the game list (which uses today's games only)
 
 ---
 
 ### Status
 - [x] Implemented
-- [x] Tests passing (83 total)
+- [x] Tests passing (109 total)
 - [x] Build successful
 - [ ] Committed (pending user approval)
 
 ---
 
-## Phase 6: Reliability, Cache & Polish - COMPLETE ✅
+## Phase 10: Historical Game Discovery - COMPLETE ✅
 
-**Commit Hash:** e120a68
-**Pushed:** Yes (origin/main)
+**Commit Hash:** (pending)
+**Pushed:** (pending)
+
+### What Was Implemented
+
+#### 1. Date Picker UI in GameListPage
+
+| Feature | Implementation |
+|---------|---------------|
+| Date input | `type="date"` styled with dark theme |
+| Quick navigation | `< Ontem`, `Hoje` (active state), `Amanhã >` buttons |
+| URL as canonical source | `/games?date=YYYY-MM-DD` |
+| Date resolution | query param > fallback to today |
+
+#### 2. Empty State for No Games
+
+```
+┌─────────────────────────────────────┐
+│  Nenhum jogo encontrado             │
+│  Não há jogos NBA para 15/04/2026.  │
+│  Tente selecionar outra data.       │
+│  [Voltar para hoje]                 │
+└─────────────────────────────────────┘
+```
+
+#### 3. Navigation Flow
+
+| Action | URL Result |
+|--------|------------|
+| Visit `/games` | Today's games |
+| Select date | `/games?date=YYYY-MM-DD` |
+| Click "Hoje" | `/games` (clears date) |
+| Click game | `/games/:id?date=YYYY-MM-DD` |
+| Reload | Preserves date in URL |
+
+### Test Coverage Added
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `GameListPage.test.tsx` | 17 | Date picker, quick nav, empty state, URL handling |
+
+**All 126 tests passing across 10 test files.**
+
+---
+
+### Verification Results
+
+```
+✅ typecheck: No errors
+✅ lint: No errors (0 warnings)
+✅ test: 126 tests passing (109 previous + 17 new)
+✅ build: 231.70 kB (success)
+```
+
+---
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `frontend/pages/GameListPage.tsx` | Date picker UI, useSearchParams, pass date to useGames |
+| `frontend/pages/GameListPage.css` | Styles for date-picker-row, quick-nav, empty-state |
+| `frontend/pages/GameListPage.test.tsx` | NEW - 17 tests for date handling |
+
+---
+
+### Status
+- [x] Implemented
+- [x] Tests passing (126 total)
+- [x] Build successful
+- [ ] Committed (pending user approval)
+
+---
+
+## Next Phase: Phase 11 - Live Game Refresh Polish (PROPOSED)
+
+### Known Limitation
+Live game data has 20-25s polling intervals which may feel slow for users expecting real-time updates. No manual refresh trigger for live games.
+
+### Proposed Objectives
+
+1. **Live Game Refresh** - Add refresh button for live games to force immediate polling
+2. **Last Updated Indicator** - Show exact timestamp of last data refresh
+3. **Visual Feedback** - Brief loading indicator on manual refresh
+
+### Scope
+
+| Item | Priority |
+|------|----------|
+| Refresh button for live games | Must |
+| Timestamp of last refresh | Should |
+| Loading indicator on refresh | Should |
+| Preserve existing polling behavior | Must |
+
+---
+
+*End of Phase 10*
 
 ---
 
@@ -327,20 +482,27 @@ All scenarios tested and passing:
 
 ---
 
-## Next Phase: Phase 9 - Game History & Deep Dive (PROPOSED)
+## Next Phase: Phase 10 - Historical Game Discovery (PROPOSED)
 
 ### Known Limitation
-GameDetailPage currently only works for today's games (ESPN API date-based). Historical games cannot be viewed.
+Users cannot browse or select past game dates - no date picker or calendar UI exists.
 
 ### Proposed Objectives
 
-1. **Game History** - Allow viewing past games by date
-2. **Enhanced Game Detail** - Play-by-play if available, deeper stats
-3. **Performance** - Route-based code splitting (defer non-critical routes)
-4. **Polish** - UI refinements based on user feedback
+1. **Date Picker UI** - Add date selection to GameListPage for browsing past games
+2. **Historical Game List** - Fetch and display games for selected date
+3. **Deep Link Validation** - Ensure all date scenarios handled gracefully
 
-### Scope (TBD based on Phase 8 review)
+### Scope
+
+| Item | Priority |
+|------|----------|
+| Date picker component | Must |
+| GameListPage date filter | Must |
+| Past date game fetching | Must |
+| Empty state for no games | Should |
+| Preserve "today" as default | Must |
 
 ---
 
-*End of Phase 8*
+*End of Phase 9*

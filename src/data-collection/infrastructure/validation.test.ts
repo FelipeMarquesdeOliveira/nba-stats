@@ -62,6 +62,7 @@ describe('SCENARIO 1: Cache Stale Behavior', () => {
     const staleAge = 90_000; // 90 seconds - past TTL(30s) and stale(60s), before MaxAge(300s)
 
     // Manually set a cache entry with old timestamp
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (cache as any).store.set(cacheKey, {
       data: [{ id: 'game1', homeTeam: { abbreviation: 'LAL' } }],
       timestamp: now - staleAge,
@@ -80,6 +81,7 @@ describe('SCENARIO 1: Cache Stale Behavior', () => {
     const now = Date.now();
     const expiredAge = 400_000; // 400 seconds - past MaxAge (300s)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (cache as any).store.set(cacheKey, {
       data: [{ id: 'game1' }],
       timestamp: now - expiredAge,
@@ -101,6 +103,7 @@ describe('SCENARIO 1: Cache Stale Behavior', () => {
   });
 
   it('default cache config for games', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const config = (cache as any).getConfigForKey('games:2026-05-01');
     expect(config.ttlMs).toBe(30_000);    // 30s TTL
     expect(config.staleMs).toBe(60_000);   // 60s stale
@@ -113,10 +116,12 @@ describe('SCENARIO 1: Cache Stale Behavior', () => {
     // This is a known limitation - patterns need exact substring matches
 
     // games key matches 'games' pattern
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const gamesConfig = (cache as any).getConfigForKey('games:2026-05-01');
     expect(gamesConfig.ttlMs).toBe(30_000);
 
     // injuries key matches 'injuries' pattern
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const injuriesConfig = (cache as any).getConfigForKey('injuries:all');
     expect(injuriesConfig.ttlMs).toBe(300_000);
   });

@@ -119,4 +119,59 @@ describe('GameDetailPage', () => {
       });
     });
   });
+
+  describe('date resolution', () => {
+    it('uses date from URL query param', async () => {
+      mockGetGameById.mockResolvedValue(mockGame);
+
+      renderWithRoute('/games/game-123?date=2026-05-01');
+
+      await waitFor(() => {
+        expect(mockGetGameById).toHaveBeenCalledWith('game-123', '2026-05-01');
+      });
+    });
+
+    it('uses today when no date provided', async () => {
+      mockGetGameById.mockResolvedValue(mockGame);
+
+      renderWithRoute('/games/game-123');
+
+      await waitFor(() => {
+        expect(mockGetGameById).toHaveBeenCalledWith('game-123', undefined);
+      });
+    });
+
+    it('shows helpful message for past games not found', async () => {
+      mockGetGameById.mockResolvedValue(null);
+
+      renderWithRoute('/games/old-game?date=2026-04-15');
+
+      await waitFor(() => {
+        expect(screen.getByText('Este jogo não está disponível para a data selecionada.')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('route state', () => {
+    it('renders immediately with game from route state', async () => {
+      const gameFromState: Game = { ...mockGame };
+
+      render(
+        <MemoryRouter initialEntries={[{ pathname: '/games/game-123', search: '?date=2026-05-01', state: { game: gameFromState, date: '2026-05-01' } }]}>
+          <Routes>
+            <Route path="/games/:gameId" element={<GameDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      // Should show back button immediately (no loading spinner for game fetch)
+      await waitFor(() => {
+        expect(screen.getByText('← Voltar')).toBeInTheDocument();
+      });
+      // Should render FinalView (boxscore fetch may still be pending/failed)
+      await waitFor(() => {
+        expect(screen.getByText('Boxscore não disponível para este jogo.')).toBeInTheDocument();
+      });
+    });
+  });
 });

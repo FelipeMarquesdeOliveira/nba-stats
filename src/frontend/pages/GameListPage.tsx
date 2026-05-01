@@ -1,14 +1,56 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Game, GameStatus } from '@domain/types';
 import { useGames } from '@frontend/hooks/useGames';
 import './GameListPage.css';
 
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
 function GameListPage() {
   const navigate = useNavigate();
-  const { games, loading, error, refetch, isStale, lastUpdated } = useGames();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const dateFromUrl = searchParams.get('date') || undefined;
+  const { games, loading, error, refetch, isStale, lastUpdated } = useGames(dateFromUrl);
+
+  const today = new Date();
+  const yesterday = addDays(today, -1);
+  const tomorrow = addDays(today, 1);
+
+  const selectedDate = dateFromUrl ? new Date(dateFromUrl + 'T00:00:00') : today;
+
+  const handleDateChange = (newDate: string) => {
+    if (newDate) {
+      setSearchParams({ date: newDate });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleQuickNav = (direction: 'yesterday' | 'today' | 'tomorrow') => {
+    switch (direction) {
+      case 'yesterday':
+        setSearchParams({ date: formatDate(yesterday) });
+        break;
+      case 'today':
+        setSearchParams({});
+        break;
+      case 'tomorrow':
+        setSearchParams({ date: formatDate(tomorrow) });
+        break;
+    }
+  };
 
   const handleGameClick = (game: Game) => {
-    navigate(`/games/${game.id}`, { state: { game } });
+    const gameDate = new Date(game.scheduledAt).toISOString().split('T')[0];
+    navigate(`/games/${game.id}?date=${gameDate}`, { state: { game, date: gameDate } });
   };
 
   const getStatusClass = (status: GameStatus) => {
@@ -24,12 +66,30 @@ function GameListPage() {
     }
   };
 
+  const formatDisplayDate = (date: Date): string => {
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const isTodaySelected = !dateFromUrl || dateFromUrl === formatDate(today);
+
   if (loading) {
     return (
       <div className="game-list-page">
         <header className="page-header">
           <h1>🏀 NBA Stats</h1>
-          <p className="subtitle">Today's Games</p>
+          <div className="date-picker-row">
+            <input
+              type="date"
+              className="date-input"
+              value={dateFromUrl || ''}
+              onChange={(e) => handleDateChange(e.target.value)}
+            />
+            <div className="quick-nav">
+              <button onClick={() => handleQuickNav('yesterday')}>{'<'} Ontem</button>
+              <button onClick={() => handleQuickNav('today')} className={isTodaySelected ? 'active' : ''}>Hoje</button>
+              <button onClick={() => handleQuickNav('tomorrow')}>Amanhã {'>'}</button>
+            </div>
+          </div>
         </header>
         <main className="games-container">
           <div className="loading-state">
@@ -49,7 +109,19 @@ function GameListPage() {
       <div className="game-list-page">
         <header className="page-header">
           <h1>🏀 NBA Stats</h1>
-          <p className="subtitle">Today's Games</p>
+          <div className="date-picker-row">
+            <input
+              type="date"
+              className="date-input"
+              value={dateFromUrl || ''}
+              onChange={(e) => handleDateChange(e.target.value)}
+            />
+            <div className="quick-nav">
+              <button onClick={() => handleQuickNav('yesterday')}>{'<'} Ontem</button>
+              <button onClick={() => handleQuickNav('today')} className={isTodaySelected ? 'active' : ''}>Hoje</button>
+              <button onClick={() => handleQuickNav('tomorrow')}>Amanhã {'>'}</button>
+            </div>
+          </div>
         </header>
         <main className="games-container">
           <div className="error-state">
@@ -71,7 +143,25 @@ function GameListPage() {
     <div className="game-list-page">
       <header className="page-header">
         <h1>🏀 NBA Stats</h1>
-        <p className="subtitle">Today's Games</p>
+        <div className="date-picker-row">
+          <input
+            type="date"
+            className="date-input"
+            value={dateFromUrl || ''}
+            onChange={(e) => handleDateChange(e.target.value)}
+          />
+          <div className="quick-nav">
+            <button onClick={() => handleQuickNav('yesterday')}>{'<'} Ontem</button>
+            <button onClick={() => handleQuickNav('today')} className={isTodaySelected ? 'active' : ''}>Hoje</button>
+            <button onClick={() => handleQuickNav('tomorrow')}>Amanhã {'>'}</button>
+          </div>
+        </div>
+        {!isTodaySelected && (
+          <p className="subtitle">Jogos de {formatDisplayDate(selectedDate)}</p>
+        )}
+        {isTodaySelected && (
+          <p className="subtitle">{"Today's Games"}</p>
+        )}
       </header>
 
       {isStale && (
@@ -90,9 +180,15 @@ function GameListPage() {
       <main className="games-container">
         {games.length === 0 ? (
           <div className="empty-state">
-            <p>Nenhum jogo encontrado para hoje.</p>
-            <button onClick={refetch} className="retry-button">
-              Atualizar
+            <p className="empty-title">Nenhum jogo encontrado</p>
+            <p className="empty-message">
+              {isTodaySelected
+                ? 'Não há jogos NBA programados para hoje.'
+                : `Não há jogos NBA para ${formatDisplayDate(selectedDate)}.`}
+            </p>
+            <p className="empty-hint">Tente selecionar outra data.</p>
+            <button onClick={() => handleQuickNav('today')} className="retry-button">
+              Voltar para hoje
             </button>
           </div>
         ) : (
