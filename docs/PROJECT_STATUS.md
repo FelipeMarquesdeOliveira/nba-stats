@@ -1,7 +1,7 @@
 # NBA Stats - Project Status
 
 **Last Updated:** 2026-05-01
-**Phase:** Phase 11 - Live Game Refresh Polish (COMPLETE ✅)
+**Phase:** Phase 12 - Pregame View Enhancements (COMPLETE ✅)
 
 ---
 
@@ -371,24 +371,110 @@ async getGameById(gameId: string, date?: string): Promise<Game | null> {
 
 ---
 
-## Next Phase: Phase 12 - Pregame View Enhancements (PROPOSED)
+## Phase 12: Pregame View Enhancements - COMPLETE ✅
+
+**Commit Hash:** (pending)
+**Pushed:** (pending)
+
+### What Was Implemented
+
+#### 1. Home/Away Records from ESPN
+
+| Field | Source | Availability |
+|-------|--------|--------------|
+| `homeTeamRecord.home` | ESPN `competitors[].records` type="home" | Condicional |
+| `homeTeamRecord.away` | ESPN `competitors[].records` type="away" | Condicional |
+| `awayTeamRecord.home` | ESPN `competitors[].records` type="home" | Condicional |
+| `awayTeamRecord.away` | ESPN `competitors[].records` type="away" | Condicional |
+
+**Normalizer:** `extractRecords()` parses ESPN records array and maps to domain format.
+
+#### 2. Home/Away Record Display
+
+```
+TeamColumn (home team):
+  Casa: 18-5  Fora: 14-10
+  [Escalação Provável]
+
+TeamColumn (away team):
+  Fora: 12-8  Casa: 16-4
+  [Escalação Provável]
+```
+
+**Rule:** Records only render when available from ESPN. No fallback invented.
+
+#### 3. B2B Badge Enhancement
+
+| Before | After |
+|--------|-------|
+| `B2B` (0.65rem, yellow bg) | `🔄 B2B` (0.75rem, orange border, larger padding) |
+
+**Color:** `#f59e0b` (amber) - attention-grabbing but not critical/competing with injuries
+
+---
+
+### Test Coverage
+
+No new tests added - assertion updated from `B2B` to `🔄 B2B`.
+
+**All 134 tests passing across 10 test files.**
+
+---
+
+### Verification Results
+
+```
+✅ typecheck: No errors
+✅ lint: No errors (0 warnings)
+✅ test: 134 tests passing
+✅ build: 233.32 kB (success)
+```
+
+---
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `domain/types.ts` | Added `homeTeamRecord` and `awayTeamRecord` to Game interface |
+| `adapters/ESPN/normalizers.ts` | Added `extractRecords()` function |
+| `PregameView.tsx` | Added `record` and `isHome` props to TeamColumn, conditional rendering |
+| `PregameView.css` | Enhanced `.b2b-badge` (icon, larger, amber color), added `.team-record` |
+| `PregameView.test.tsx` | Updated assertion from 'B2B' to '🔄 B2B' |
+
+---
+
+### Status
+- [x] Implemented
+- [x] Tests passing (134 total)
+- [x] Build successful
+- [ ] Committed (pending user approval)
+
+---
+
+## Next Phase: Phase 13 - Mobile Responsiveness Improvements (PROPOSED)
 
 ### Known Limitation
-PregameView shows team records but doesn't display recent form (last 10 games) or back-to-back context in a scannable way.
+Mobile view may have overlapping elements, small tap targets, and layout issues on small screens.
 
 ### Proposed Objectives
 
-1. **Recent Form Display** - Show last 10 games record for each team
-2. **B2B Indicator Enhancement** - Make back-to-back more prominent
-3. **Head-to-Head Context** - Show recent H2H results if available
+1. **Mobile Layout Fixes** - Ensure scoreboard and tables fit on small screens
+2. **Touch Targets** - Increase tap target sizes for buttons and game cards
+3. **Responsive Breakpoints** - Define consistent breakpoints for tablet/mobile
 
 ### Scope
 
 | Item | Priority |
 |------|----------|
-| Last 10 games indicator | Must |
-| B2B badge enhancement | Should |
-| Home/away record | Should |
+| Game card touch targets (min 44px) | Must |
+| Scoreboard responsive layout | Must |
+| Table horizontal scroll on mobile | Should |
+| Date picker mobile width | Should |
+
+---
+
+*End of Phase 12*
 | Preserve existing pregame data | Must |
 
 ---

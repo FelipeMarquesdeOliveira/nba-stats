@@ -190,7 +190,7 @@ describe('PregameView', () => {
       };
 
       render(<PregameView game={mockGame} recentGames={[previousGame]} />);
-      expect(screen.getAllByText('B2B').length).toBe(2); // Both teams played yesterday
+      expect(screen.getAllByText('🔄 B2B').length).toBe(2); // Both teams played yesterday
     });
 
     it('does not show B2B badge when not applicable', () => {
@@ -205,7 +205,7 @@ describe('PregameView', () => {
       });
 
       render(<PregameView game={mockGame} recentGames={[]} />);
-      expect(screen.queryByText('B2B')).not.toBeInTheDocument();
+      expect(screen.queryByText('🔄 B2B')).not.toBeInTheDocument();
     });
   });
 

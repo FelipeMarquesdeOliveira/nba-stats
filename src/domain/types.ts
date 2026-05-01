@@ -94,6 +94,8 @@ export interface Game {
   clock?: string;
   venue?: string;
   broadcaster?: string;
+  homeTeamRecord?: { home: string; away: string };
+  awayTeamRecord?: { home: string; away: string };
 }
 
 // =============================================================================

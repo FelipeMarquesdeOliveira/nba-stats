@@ -44,6 +44,9 @@ export function normalizeEventToGame(event: ESPNEvent): Game {
   const homeTeam: Team = createTeam(homeCompetitor?.team);
   const awayTeam: Team = createTeam(awayCompetitor?.team);
 
+  const homeRecords = extractRecords(homeCompetitor?.records);
+  const awayRecords = extractRecords(awayCompetitor?.records);
+
   return {
     id: event.id,
     homeTeam,
@@ -55,6 +58,32 @@ export function normalizeEventToGame(event: ESPNEvent): Game {
     period: competition.status?.period,
     clock: competition.status?.clock,
     broadcaster: competition.broadcasts?.map(b => b.names[0]).join(', '),
+    homeTeamRecord: homeRecords,
+    awayTeamRecord: awayRecords,
+  };
+}
+
+interface TeamRecords {
+  home: string;
+  away: string;
+}
+
+function extractRecords(records?: { summary: string; type: string }[]): TeamRecords | undefined {
+  if (!records || records.length === 0) return undefined;
+
+  let homeRecord: string | undefined;
+  let awayRecord: string | undefined;
+
+  for (const record of records) {
+    if (record.type === 'home') homeRecord = record.summary;
+    if (record.type === 'away') awayRecord = record.summary;
+  }
+
+  if (!homeRecord && !awayRecord) return undefined;
+
+  return {
+    home: homeRecord || '',
+    away: awayRecord || '',
   };
 }
 

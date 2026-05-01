@@ -101,14 +101,30 @@
 .b2b-badge {
   display: inline-block;
   margin-left: 0.5rem;
-  padding: 0.15rem 0.4rem;
-  background: rgba(234, 179, 8, 0.2);
-  color: #eab308;
-  font-size: 0.65rem;
+  padding: 0.3rem 0.6rem;
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  font-size: 0.75rem;
   font-weight: 700;
   border-radius: 4px;
   text-transform: uppercase;
   vertical-align: middle;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.team-record {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.team-record span {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }
 
 .section-title {

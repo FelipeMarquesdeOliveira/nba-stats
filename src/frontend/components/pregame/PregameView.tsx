@@ -120,6 +120,8 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
             shortName: game.awayTeam.shortName,
           }}
           isBackToBack={awayB2B}
+          record={game.awayTeamRecord}
+          isHome={false}
         />
         <div className="vs-divider">VS</div>
         <TeamColumn
@@ -129,6 +131,8 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
             shortName: game.homeTeam.shortName,
           }}
           isBackToBack={homeB2B}
+          record={game.homeTeamRecord}
+          isHome={true}
         />
       </div>
 
@@ -168,16 +172,37 @@ interface TeamColumnProps {
     shortName: string;
   };
   isBackToBack?: boolean;
+  record?: { home: string; away: string };
+  isHome?: boolean;
 }
 
-function TeamColumn({ teamData, isBackToBack }: TeamColumnProps) {
+function TeamColumn({ teamData, isBackToBack, record, isHome }: TeamColumnProps) {
   return (
     <div className="team-column">
       <div className="team-header">
         <span className="team-abbr">{teamData.abbreviation}</span>
         <span className="team-name">{teamData.name}</span>
-        {isBackToBack && <span className="b2b-badge" title="Back-to-back">B2B</span>}
+        {isBackToBack && (
+          <span className="b2b-badge" title="Back-to-back - jogou ontem">
+            🔄 B2B
+          </span>
+        )}
       </div>
+      {record && (
+        <div className="team-record">
+          {isHome ? (
+            <>
+              {record.home && <span>Casa: {record.home}</span>}
+              {record.away && <span>Fora: {record.away}</span>}
+            </>
+          ) : (
+            <>
+              {record.away && <span>Fora: {record.away}</span>}
+              {record.home && <span>Casa: {record.home}</span>}
+            </>
+          )}
+        </div>
+      )}
       <div className="section-title">Escalação Provável</div>
       <div className="unavailable-data">
         <span className="unavailable-badge">Indisponível</span>
