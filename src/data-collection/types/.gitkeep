@@ -1,0 +1,4 @@
+// Placeholder - Data collection types
+// To be implemented as needed
+
+export const placeholder = true;
