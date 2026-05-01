@@ -35,7 +35,11 @@ export enum LineColor {
 }
 
 export enum OnCourtStatus {
-  CONFIRMED = 'confirmed',
+  // Internal enum values - UI displays different text
+  // CONFIRMED → "🔴 Alta confiança" (Q4 starter with context)
+  // ESTIMATED → "🟡 Estimado" (minutes > 0 but lower confidence)
+  // UNKNOWN → "— Indisponível" (no minutes or scheduled/final)
+  HIGH_CONFIDENCE = 'confirmed', // renamed internally for clarity
   ESTIMATED = 'estimated',
   UNKNOWN = 'unknown',
 }

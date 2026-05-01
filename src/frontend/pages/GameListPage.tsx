@@ -108,7 +108,14 @@ function GameListPage() {
               >
                 <div className="game-card-header">
                   <span className={`game-status ${getStatusClass(game.status)}`}>
-                    {game.status}
+                    {game.status === GameStatus.LIVE && '● AO VIVO'}
+                    {game.status === GameStatus.SCHEDULED && '⏰ AGENDADO'}
+                    {game.status === GameStatus.FINAL && '✅ FINAL'}
+                    {game.status === GameStatus.POSTPONED && '⏸ POSTPOSTO'}
+                    {game.status === GameStatus.CANCELLED && '❌ CANCELADO'}
+                    {game.status !== GameStatus.LIVE && game.status !== GameStatus.SCHEDULED &&
+                     game.status !== GameStatus.FINAL && game.status !== GameStatus.POSTPONED &&
+                     game.status !== GameStatus.CANCELLED && game.status}
                     {game.status === GameStatus.LIVE && game.period && (
                       <span className="period-info">
                         {' '}

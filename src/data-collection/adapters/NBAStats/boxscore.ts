@@ -71,8 +71,8 @@ export async function getBoxScore(gameId: string): Promise<BoxScore> {
   // Normalize to domain
   let boxscore = normalizeBoxscoreResponse(response, gameId, homeTeamAbbr, awayTeamAbbr);
 
-  // Apply on-court heuristic to each player
-  boxscore = applyOnCourtHeuristic(boxscore, 'live');
+  // Apply on-court heuristic to each player with period info
+  boxscore = applyOnCourtHeuristic(boxscore, 'live', boxscore.period);
 
   return boxscore;
 }
@@ -102,30 +102,33 @@ export async function getBoxScoreWithStatus(
 
   let boxscore = normalizeBoxscoreResponse(response, gameId, homeTeamAbbr, awayTeamAbbr);
 
-  // Apply on-court heuristic with game status
-  boxscore = applyOnCourtHeuristic(boxscore, gameStatus);
+  // Apply on-court heuristic with game status and period info
+  boxscore = applyOnCourtHeuristic(boxscore, gameStatus, boxscore.period);
 
   return boxscore;
 }
 
 /**
  * Apply on-court heuristic to all players in boxscore
+ * @param period Optional game period for confidence calculation (1-4=Q1-Q4, 5+=OT)
  */
 function applyOnCourtHeuristic(
   boxscore: BoxScore,
-  gameStatus: 'live' | 'final' | 'scheduled'
+  gameStatus: 'live' | 'final' | 'scheduled',
+  period?: number
 ): BoxScore {
   // Update players with on-court status
   boxscore.players = boxscore.players.map(player => {
     const status = detectOnCourtStatus(
       player.minutesPlayed,
       player.isStarter ?? false,
-      gameStatus
+      gameStatus,
+      period
     );
 
     return {
       ...player,
-      isOnCourt: status === OnCourtStatus.CONFIRMED || status === OnCourtStatus.ESTIMATED,
+      isOnCourt: status === OnCourtStatus.HIGH_CONFIDENCE || status === OnCourtStatus.ESTIMATED,
       onCourtStatus: status,
     };
   });

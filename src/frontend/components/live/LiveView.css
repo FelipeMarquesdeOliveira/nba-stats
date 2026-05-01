@@ -2,6 +2,21 @@
   color: #fff;
 }
 
+.data-confidence-note {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+.data-confidence-note span {
+  display: block;
+}
+
 .live-scoreboard {
   display: flex;
   justify-content: center;
@@ -38,6 +53,17 @@
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 0.5rem;
+}
+
+.scoreboard-team[data-leading="true"] .team-score {
+  color: #22c55e;
+}
+
+.lead-indicator {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #22c55e;
+  margin-top: 0.25rem;
 }
 
 .scoreboard-center {
@@ -176,9 +202,16 @@
 }
 
 .court-indicator {
-  color: #22c55e;
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   margin-left: 0.25rem;
+}
+
+.court-indicator.high-confidence {
+  color: #ef4444;
+}
+
+.court-indicator.estimated {
+  color: #eab308;
 }
 
 .pts-cell {

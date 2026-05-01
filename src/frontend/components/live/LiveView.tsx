@@ -63,15 +63,17 @@ function LiveView({ game }: LiveViewProps) {
     );
   }
 
-  // Sort players: on-court first, then by points
+  // Sort players: HIGH_CONFIDENCE first, then ESTIMATED, then UNKNOWN, then by points
   const sortPlayers = (players: BoxScorePlayer[]) => {
     return [...players].sort((a, b) => {
+      // Sort by confidence level first (HIGH_CONFIDENCE > ESTIMATED > UNKNOWN)
       if (a.onCourtStatus !== b.onCourtStatus) {
+        if (a.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return -1;
+        if (b.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return 1;
         if (a.onCourtStatus === OnCourtStatus.ESTIMATED) return -1;
         if (b.onCourtStatus === OnCourtStatus.ESTIMATED) return 1;
-        if (a.onCourtStatus === OnCourtStatus.CONFIRMED) return -1;
-        if (b.onCourtStatus === OnCourtStatus.CONFIRMED) return 1;
       }
+      // Within same status, sort by points
       return b.points - a.points;
     });
   };
@@ -79,6 +81,9 @@ function LiveView({ game }: LiveViewProps) {
   const homePlayers = sortPlayers(boxscore.homeTeam.players);
   const awayPlayers = sortPlayers(boxscore.awayTeam.players);
   const showStaleIndicator = isStale && boxscore;
+
+  // Calculate lead indicator
+  const homeLead = boxscore.homeScore - boxscore.awayScore;
 
   return (
     <div className="live-view">
@@ -96,14 +101,17 @@ function LiveView({ game }: LiveViewProps) {
       )}
 
       <div className="live-scoreboard">
-        <div className="scoreboard-team">
+        <div className="scoreboard-team" data-leading={homeLead < 0}>
           <span className="team-abbr">{game.awayTeam.abbreviation}</span>
           <span className="team-score">{boxscore.awayScore}</span>
+          {homeLead < 0 && (
+            <span className="lead-indicator">+{Math.abs(homeLead)}</span>
+          )}
           <span className="team-name">{game.awayTeam.name}</span>
         </div>
 
         <div className="scoreboard-center">
-          <div className="live-indicator">● LIVE</div>
+          <div className="live-indicator">● AO VIVO</div>
           <div className="game-clock">
             {boxscore.period}{boxscore.clock && ` • ${boxscore.clock}`}
           </div>
@@ -112,9 +120,12 @@ function LiveView({ game }: LiveViewProps) {
           )}
         </div>
 
-        <div className="scoreboard-team">
+        <div className="scoreboard-team" data-leading={homeLead > 0}>
           <span className="team-abbr">{game.homeTeam.abbreviation}</span>
           <span className="team-score">{boxscore.homeScore}</span>
+          {homeLead > 0 && (
+            <span className="lead-indicator">+{homeLead}</span>
+          )}
           <span className="team-name">{game.homeTeam.name}</span>
         </div>
       </div>
@@ -130,6 +141,10 @@ function LiveView({ game }: LiveViewProps) {
           players={homePlayers}
         />
       </div>
+
+      <div className="data-confidence-note">
+        <span>⚠️ Status de jogadores em campo é inferência baseada em contexto (período + minutos). Pode não refletir roster oficial.</span>
+      </div>
     </div>
   );
 }
@@ -140,15 +155,26 @@ interface PlayersSectionProps {
 }
 
 function PlayersSection({ teamName, players }: PlayersSectionProps) {
-  const onCourtCount = players.filter(
-    (p: BoxScorePlayer) => p.onCourtStatus !== OnCourtStatus.UNKNOWN
+  // Count by confidence level for badge
+  const highConfidenceCount = players.filter(
+    (p: BoxScorePlayer) => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE
+  ).length;
+  const estimatedCount = players.filter(
+    (p: BoxScorePlayer) => p.onCourtStatus === OnCourtStatus.ESTIMATED
   ).length;
 
   return (
     <div className="players-section">
       <div className="section-header">
         <h3>{teamName}</h3>
-        <span className="on-court-badge">{onCourtCount} Em Campo</span>
+        <span
+          className="on-court-badge"
+          title="🔴 = alta confiança (Q4 com contexto) | 🟡 = estimado (baseado em minutos)"
+        >
+          {highConfidenceCount > 0 && `${highConfidenceCount} 🔴`}
+          {estimatedCount > 0 && ` ${estimatedCount} 🟡`}
+          {highConfidenceCount === 0 && estimatedCount === 0 && '— Indisponível'}
+        </span>
       </div>
       <table className="players-table">
         <thead>
@@ -176,10 +202,11 @@ function PlayersSection({ teamName, players }: PlayersSectionProps) {
                   <span className="player-name">{player.player.name}</span>
                   <span className="player-pos">{player.player.position}</span>
                 </span>
-                {player.onCourtStatus !== OnCourtStatus.UNKNOWN && (
-                  <span className="court-indicator">
-                    {player.onCourtStatus === OnCourtStatus.ESTIMATED ? '~' : '●'}
-                  </span>
+                {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && (
+                  <span className="court-indicator high-confidence" title="Alta confiança - inferência baseada em Q4 + starter">🔴</span>
+                )}
+                {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
+                  <span className="court-indicator estimated" title="Estimado - baseado em minutos jogados">🟡</span>
                 )}
               </td>
               <td className="pts-cell">{player.points}</td>
@@ -187,16 +214,14 @@ function PlayersSection({ teamName, players }: PlayersSectionProps) {
               <td>{player.assists}</td>
               <td className="min-cell">{player.minutesPlayed}</td>
               <td className="status-cell">
-                {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
-                  <span className="status-badge estimated" title="Estimado com base nos dados disponíveis">
-                    ~ Estimado
-                  </span>
+                {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && (
+                  <span className="status-badge high-confidence">🔴 Alta confiança</span>
                 )}
-                {player.onCourtStatus === OnCourtStatus.CONFIRMED && (
-                  <span className="status-badge confirmed">● Confirmado</span>
+                {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
+                  <span className="status-badge estimated">🟡 Estimado</span>
                 )}
                 {player.onCourtStatus === OnCourtStatus.UNKNOWN && (
-                  <span className="status-badge unknown">—</span>
+                  <span className="status-badge unknown">— Indisponível</span>
                 )}
               </td>
             </tr>

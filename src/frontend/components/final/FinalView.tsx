@@ -71,6 +71,11 @@ function FinalView({ game }: FinalViewProps) {
   const awayStats = boxscore.teamStats?.[game.awayTeam.abbreviation] || {};
   const showStaleIndicator = isStale && boxscore;
 
+  // Calculate win margin
+  const margin = boxscore.homeScore - boxscore.awayScore;
+  const winner = margin > 0 ? game.homeTeam : margin < 0 ? game.awayTeam : null;
+  const absMargin = Math.abs(margin);
+
   return (
     <div className="final-view">
       {showStaleIndicator && (
@@ -95,6 +100,9 @@ function FinalView({ game }: FinalViewProps) {
 
         <div className="final-center">
           <div className="final-label">FINAL</div>
+          {winner && absMargin > 0 && (
+            <div className="win-margin">{winner.abbreviation} by {absMargin}</div>
+          )}
           {game.venue && <div className="final-venue">{game.venue}</div>}
         </div>
 

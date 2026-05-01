@@ -175,12 +175,12 @@ export function useLiveGame(
 // Utility to get on-court status text
 export function getOnCourtStatusText(status: OnCourtStatus): string {
   switch (status) {
-    case OnCourtStatus.CONFIRMED:
-      return 'Confirmado';
+    case OnCourtStatus.HIGH_CONFIDENCE:
+      return 'Alta confiança';
     case OnCourtStatus.ESTIMATED:
-      return 'Estimado com base nos dados disponíveis';
+      return 'Estimado';
     case OnCourtStatus.UNKNOWN:
     default:
-      return 'Não disponível';
+      return 'Indisponível';
   }
 }

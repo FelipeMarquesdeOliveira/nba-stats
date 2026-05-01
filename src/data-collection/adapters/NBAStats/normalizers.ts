@@ -192,23 +192,50 @@ function normalizeTeamStats(resultSet?: NBAStatsResultSet): Record<string, Recor
 
 /**
  * Detect on-court status based on minutes played and game state
- * This is a heuristic since stats.nba.com doesn't have explicit isOnCourt field
+ *
+ * Confidence levels (UI shows: 🔴 Alta confiança | 🟡 Estimado | — Indisponível):
+ * - HIGH_CONFIDENCE: Q4/OT starter with 6+ minutes OR Q4 starter with 3+ minutes (crunch time)
+ * - ESTIMATED: any player with minutes > 0 who doesn't meet HIGH_CONFIDENCE criteria
+ * - UNKNOWN: no minutes played or game not in progress
+ *
+ * This is a heuristic since stats.nba.com doesn't provide explicit on-court data.
+ * We infer based on game context (period) and player role (starter).
  */
 export function detectOnCourtStatus(
   minutesPlayed: string,
-  _isStarter: boolean,
-  gameStatus: 'live' | 'final' | 'scheduled' | undefined
+  isStarter: boolean,
+  gameStatus: 'live' | 'final' | 'scheduled' | undefined,
+  period?: number // 1-4 = Q1-Q4, 5+ = OT
 ): OnCourtStatus {
-  if (gameStatus === 'scheduled') {
+  if (gameStatus === 'scheduled' || gameStatus === 'final') {
     return OnCourtStatus.UNKNOWN;
   }
 
-  if (gameStatus === 'final') {
+  // Parse minutes from "MM:SS" format
+  const [minStr] = minutesPlayed.split(':');
+  const minutes = parseInt(minStr, 10) || 0;
+
+  // No minutes played = unavailable
+  if (minutes === 0) {
     return OnCourtStatus.UNKNOWN;
   }
 
-  // During live game or at game end
-  if (minutesPlayed && minutesPlayed !== '00:00' && minutesPlayed !== '') {
+  // HIGH_CONFIDENCE: Q4/OT (period >= 4) + starter + sufficient minutes
+  // This is when rotation shrinks and we have higher confidence
+  if (isStarter && (period ?? 0) >= 4) {
+    // Q4/OT with 6+ minutes: likely still in game
+    if (minutes >= 6) {
+      return OnCourtStatus.HIGH_CONFIDENCE;
+    }
+    // Q4/OT with 3+ minutes: crunch time starters
+    if (minutes >= 3) {
+      return OnCourtStatus.HIGH_CONFIDENCE;
+    }
+  }
+
+  // ESTIMATED: has minutes but doesn't meet HIGH_CONFIDENCE criteria
+  // Could be bench player, early in game, or reduced minutes
+  if (minutes > 0) {
     return OnCourtStatus.ESTIMATED;
   }
 

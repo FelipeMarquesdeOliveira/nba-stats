@@ -1,11 +1,109 @@
 # NBA Stats - Project Status
 
 **Last Updated:** 2026-05-01
-**Phase:** Phase 6 - Reliability, Cache & Polish (COMPLETE ✅)
+**Phase:** Phase 7 - Live Experience & Product Refinement (COMPLETE ✅)
 
 ---
 
-## Phase 5: Real Data Integration - COMPLETE ✅
+## Phase 7: Live Experience & Product Refinement - COMPLETE ✅
+
+**Commit Hash:** (pending)
+**Pushed:** No
+
+### What Was Implemented
+
+#### 1. On-Court Status Confidence System
+
+| Status | UI Symbol | Product Message | Logic |
+|--------|-----------|----------------|-------|
+| `HIGH_CONFIDENCE` | 🔴 | Alta confiança | Q4/OT starter with 6+ min (or 3+ min crunch time) |
+| `ESTIMATED` | 🟡 | Estimado | Any player with minutes > 0 not meeting HIGH |
+| `UNKNOWN` | — | Indisponível | No minutes played or game not in progress |
+
+**Key Rule:** Never show "confirmado" - always "estimado" or "alta confiança" since heuristic is inference.
+
+#### 2. LiveView Enhancements
+
+| Feature | Implementation |
+|---------|---------------|
+| Lead indicator | Shows `+N` for winning team (green margin) |
+| Score display | Home/Away scores with team abbreviations |
+| Confidence badge | Shows count like "2 🔴 3 🟡" for on-court players |
+| Court indicators | 🔴 for HIGH_CONFIDENCE, 🟡 for ESTIMATED |
+| Period/clock | Shows "4 • 5:30" format |
+| Last play | Shows last play when available |
+| Data disclaimer | Note at bottom: "informações baseadas em inferência" |
+
+#### 3. FinalView Enhancements
+
+| Feature | Implementation |
+|---------|---------------|
+| Win margin | Shows margin for winner (e.g., "+8") |
+
+#### 4. GameListPage Status Badges (Portuguese)
+
+| Status | Badge |
+|--------|-------|
+| LIVE | ● AO VIVO |
+| SCHEDULED | ⏰ AGENDADO |
+| FINAL | ✅ FINAL |
+
+#### 5. useLiveGame Hook Updates
+
+- `getOnCourtStatusText()` returns Portuguese labels
+- Circuit-aware polling (slower when circuit open)
+
+---
+
+### Test Coverage Added
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `detectOnCourtStatus.test.ts` | 17 | Unit tests for heuristic (all confidence levels, edge cases) |
+| `LiveView.test.tsx` | 11 | Component tests (states, scoreboard, badge, disclaimer) |
+| **Total new** | **28** | |
+
+**All 83 tests passing across 6 test files.**
+
+---
+
+### Verification Results
+
+```
+✅ typecheck: No errors
+✅ lint: No errors
+✅ test: 83 tests passing (55 original + 28 new)
+✅ build: 238.08 kB (success)
+```
+
+---
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `domain/types.ts` | PeriodType enum added |
+| `adapters/NBAStats/normalizers.ts` | Enhanced `detectOnCourtStatus` with period-based confidence |
+| `adapters/NBAStats/boxscore.ts` | Pass period to heuristic |
+| `frontend/hooks/useLiveGame.ts` | Portuguese labels, circuit-aware polling |
+| `frontend/components/live/LiveView.tsx` | Lead indicator, confidence badge, court indicators, disclaimer |
+| `frontend/components/live/LiveView.css` | Styles for lead indicator, court indicators, disclaimer |
+| `frontend/components/final/FinalView.tsx` | Win margin display |
+| `frontend/pages/GameListPage.tsx` | Portuguese status badges |
+| `infrastructure/detectOnCourtStatus.test.ts` | NEW - 17 unit tests |
+| `frontend/components/live/LiveView.test.tsx` | NEW - 11 component tests |
+
+---
+
+### Status
+- [x] Implemented
+- [x] Tests passing (83 total)
+- [x] Build successful
+- [ ] Committed (pending user approval)
+
+---
+
+## Phase 6: Reliability, Cache & Polish - COMPLETE ✅
 
 **Commit Hash:** e120a68
 **Pushed:** Yes (origin/main)
