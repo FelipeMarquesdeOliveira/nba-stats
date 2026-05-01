@@ -6,12 +6,21 @@ interface LiveViewProps {
   game: Game;
 }
 
+function formatTimeAgo(date: Date | null): string {
+  if (!date) return '';
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 5) return 'agora';
+  if (seconds < 60) return `há ${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `há ${minutes}min`;
+}
+
 function LiveView({ game }: LiveViewProps) {
   const gameStatus: 'live' | 'final' | 'scheduled' =
     game.status === GameStatus.LIVE ? 'live' :
     game.status === GameStatus.FINAL ? 'final' : 'scheduled';
 
-  const { boxscore, loading, error, refetch, isStale, lastUpdated, circuitOpen } = useLiveGame(game.id, gameStatus);
+  const { boxscore, loading, error, refetch, isStale, lastUpdated, circuitOpen, isManualRefreshing } = useLiveGame(game.id, gameStatus);
 
   if (loading) {
     return (
@@ -31,7 +40,7 @@ function LiveView({ game }: LiveViewProps) {
           <span className="circuit-icon">🔌</span>
           <p className="circuit-title">Serviço temporariamente indisponível</p>
           <p className="circuit-hint">Aguarde alguns segundos e tente novamente</p>
-          <button onClick={refetch} className="retry-button">
+          <button onClick={() => refetch({ manual: true })} className="retry-button">
             Tentar novamente
           </button>
         </div>
@@ -45,7 +54,7 @@ function LiveView({ game }: LiveViewProps) {
         <div className="error-state">
           <p className="error-title">Erro ao carregar dados</p>
           <p className="error-message">{error}</p>
-          <button onClick={refetch} className="retry-button">
+          <button onClick={() => refetch({ manual: true })} className="retry-button">
             Tentar novamente
           </button>
         </div>
@@ -66,35 +75,53 @@ function LiveView({ game }: LiveViewProps) {
   // Sort players: HIGH_CONFIDENCE first, then ESTIMATED, then UNKNOWN, then by points
   const sortPlayers = (players: BoxScorePlayer[]) => {
     return [...players].sort((a, b) => {
-      // Sort by confidence level first (HIGH_CONFIDENCE > ESTIMATED > UNKNOWN)
       if (a.onCourtStatus !== b.onCourtStatus) {
         if (a.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return -1;
         if (b.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return 1;
         if (a.onCourtStatus === OnCourtStatus.ESTIMATED) return -1;
         if (b.onCourtStatus === OnCourtStatus.ESTIMATED) return 1;
       }
-      // Within same status, sort by points
       return b.points - a.points;
     });
   };
 
   const homePlayers = sortPlayers(boxscore.homeTeam.players);
   const awayPlayers = sortPlayers(boxscore.awayTeam.players);
-  const showStaleIndicator = isStale && boxscore;
 
-  // Calculate lead indicator
   const homeLead = boxscore.homeScore - boxscore.awayScore;
+  const isLiveGame = game.status === GameStatus.LIVE;
 
   return (
     <div className="live-view">
-      {showStaleIndicator && (
+      {isLiveGame && (
+        <div className="refresh-header">
+          <div className="timestamp-info">
+            <span className="timestamp-label">
+              {isStale ? 'Última atualização bem-sucedida: ' : 'Atualizado: '}
+            </span>
+            <span className="timestamp-value">{formatTimeAgo(lastUpdated)}</span>
+            {isManualRefreshing && (
+              <span className="refreshing-indicator">⟳ atualizando...</span>
+            )}
+          </div>
+          <button
+            onClick={() => refetch({ manual: true })}
+            className="refresh-button"
+            disabled={isManualRefreshing}
+          >
+            {isManualRefreshing ? '⟳' : '⟳ Atualizar'}
+          </button>
+        </div>
+      )}
+
+      {!isLiveGame && isStale && (
         <div className="stale-indicator">
           <span className="warning-icon">⚠️</span>
           <span>
             Dados podem estar desatualizados
             {lastUpdated && ` (última att: há ${Math.floor((Date.now() - lastUpdated.getTime()) / 60000)} min)`}
           </span>
-          <button onClick={refetch} className="stale-refresh-button">
+          <button onClick={() => refetch({ manual: true })} className="stale-refresh-button">
             Atualizar
           </button>
         </div>
@@ -155,7 +182,6 @@ interface PlayersSectionProps {
 }
 
 function PlayersSection({ teamName, players }: PlayersSectionProps) {
-  // Count by confidence level for badge
   const highConfidenceCount = players.filter(
     (p: BoxScorePlayer) => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE
   ).length;

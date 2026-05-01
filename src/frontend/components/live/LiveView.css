@@ -2,6 +2,59 @@
   color: #fff;
 }
 
+.refresh-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.timestamp-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.timestamp-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.timestamp-value {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.refreshing-indicator {
+  color: #646cff;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+
+.refresh-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .data-confidence-note {
   margin-top: 1.5rem;
   padding: 0.75rem 1rem;

@@ -149,7 +149,8 @@ describe('LiveView', () => {
         refetch: vi.fn(),
         isStale: false,
         lastUpdated: null,
-        circuitOpen: false
+        circuitOpen: false,
+        isManualRefreshing: false
       });
 
       render(<LiveView game={mockGame} />);
@@ -333,11 +334,168 @@ describe('LiveView', () => {
         refetch: vi.fn(),
         isStale: false,
         lastUpdated: null,
-        circuitOpen: false
+        circuitOpen: false,
+        isManualRefreshing: false
       });
 
       render(<LiveView game={mockGame} />);
       expect(screen.getByText(/inferência baseada em contexto/)).toBeInTheDocument();
+    });
+  });
+
+  describe('refresh button', () => {
+    it('shows refresh button only for LIVE games', () => {
+      const mockBoxscore = createMockBoxscore(102, 98);
+      const lastUpdated = new Date();
+
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated,
+        circuitOpen: false,
+        isManualRefreshing: false
+      });
+
+      render(<LiveView game={mockGame} />);
+      expect(screen.getByText('⟳ Atualizar')).toBeInTheDocument();
+    });
+
+    it('does not show refresh button for FINAL games', () => {
+      const mockBoxscore = createMockBoxscore(102, 98);
+      const lastUpdated = new Date();
+      const finalGame = { ...mockGame, status: GameStatus.FINAL };
+
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated,
+        circuitOpen: false,
+        isManualRefreshing: false
+      });
+
+      render(<LiveView game={finalGame} />);
+      expect(screen.queryByText('⟳ Atualizar')).not.toBeInTheDocument();
+    });
+
+    it('does not show refresh button during loading', () => {
+      mockUseLiveGame.mockReturnValue({
+        boxscore: null,
+        loading: true,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated: null,
+        circuitOpen: false,
+        isManualRefreshing: false
+      });
+
+      render(<LiveView game={mockGame} />);
+      expect(screen.queryByText('⟳ Atualizar')).not.toBeInTheDocument();
+    });
+
+    it('shows refreshing indicator when isManualRefreshing is true', () => {
+      const mockBoxscore = createMockBoxscore(102, 98);
+      const lastUpdated = new Date();
+
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated,
+        circuitOpen: false,
+        isManualRefreshing: true
+      });
+
+      render(<LiveView game={mockGame} />);
+      expect(screen.getByText('⟳ atualizando...')).toBeInTheDocument();
+    });
+
+    it('button is disabled when isManualRefreshing is true', () => {
+      const mockBoxscore = createMockBoxscore(102, 98);
+      const lastUpdated = new Date();
+
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated,
+        circuitOpen: false,
+        isManualRefreshing: true
+      });
+
+      render(<LiveView game={mockGame} />);
+      expect(screen.getByRole('button', { name: '⟳' })).toBeDisabled();
+    });
+
+    it('calls refetch with manual true when clicked', () => {
+      const mockBoxscore = createMockBoxscore(102, 98);
+      const lastUpdated = new Date();
+      const refetchMock = vi.fn();
+
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: refetchMock,
+        isStale: false,
+        lastUpdated,
+        circuitOpen: false,
+        isManualRefreshing: false
+      });
+
+      render(<LiveView game={mockGame} />);
+      screen.getByText('⟳ Atualizar').click();
+      expect(refetchMock).toHaveBeenCalledWith({ manual: true });
+    });
+  });
+
+  describe('timestamp display', () => {
+    it('shows "Atualizado:" when data is fresh', () => {
+      const mockBoxscore = createMockBoxscore(102, 98);
+      const lastUpdated = new Date();
+
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated,
+        circuitOpen: false,
+        isManualRefreshing: false
+      });
+
+      render(<LiveView game={mockGame} />);
+      expect(screen.getByText(/^Atualizado:/)).toBeInTheDocument();
+    });
+
+    it('shows "Última atualização bem-sucedida:" when data is stale', () => {
+      const mockBoxscore = createMockBoxscore(102, 98);
+      const lastUpdated = new Date();
+
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: true,
+        lastUpdated,
+        circuitOpen: false,
+        isManualRefreshing: false
+      });
+
+      render(<LiveView game={mockGame} />);
+      expect(screen.getByText(/^Última atualização bem-sucedida:/)).toBeInTheDocument();
     });
   });
 });

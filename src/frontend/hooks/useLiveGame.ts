@@ -11,10 +11,11 @@ interface UseLiveGameResult {
   boxscore: BoxScore | null;
   loading: boolean;
   error: string | null;
-  refetch: () => void;
+  refetch: (options?: { manual?: boolean }) => void;
   isStale: boolean;
   lastUpdated: Date | null;
   circuitOpen: boolean;
+  isManualRefreshing: boolean;
 }
 
 export function useLiveGame(
@@ -27,6 +28,7 @@ export function useLiveGame(
   const [isStale, setIsStale] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [circuitOpen, setCircuitOpen] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const boxscoreRef = useRef<BoxScore | null>(null);
 
@@ -35,7 +37,10 @@ export function useLiveGame(
     boxscoreRef.current = boxscore;
   }, [boxscore]);
 
-  const fetchBoxscore = async (isRetry = false) => {
+  const fetchBoxscore = async (options?: { manual?: boolean; retry?: boolean }) => {
+    const isRetry = options?.retry ?? false;
+    const isManual = options?.manual ?? false;
+
     if (!gameId) {
       setError('Game ID is required');
       setLoading(false);
@@ -44,6 +49,9 @@ export function useLiveGame(
 
     if (!isRetry) {
       setLoading(true);
+    }
+    if (isManual) {
+      setIsManualRefreshing(true);
     }
     setError(null);
 
@@ -74,12 +82,23 @@ export function useLiveGame(
       } else if (isCircuitOpen) {
         setError('Serviço temporariamente indisponível');
         setIsStale(false);
+      } else if (!isManual && !isRetry) {
+        // Initial load error - show error state
+        setError(errorMessage);
+        setIsStale(false);
+      } else if (isManual) {
+        // Manual refresh failed but we have data - keep showing data with stale
+        setIsStale(true);
+        setError(null);
       } else {
         setError(errorMessage);
         setIsStale(false);
       }
     } finally {
       setLoading(false);
+      if (isManual) {
+        setIsManualRefreshing(false);
+      }
     }
   };
 
@@ -119,7 +138,7 @@ export function useLiveGame(
     }
 
     pollingIntervalRef.current = setInterval(() => {
-      fetchBoxscore(true);
+      fetchBoxscore({ retry: true });
     }, adjustedInterval);
   };
 
@@ -165,10 +184,11 @@ export function useLiveGame(
     boxscore,
     loading,
     error,
-    refetch: () => fetchBoxscore(false),
+    refetch: (options?: { manual?: boolean }) => fetchBoxscore({ manual: options?.manual }),
     isStale,
     lastUpdated,
     circuitOpen,
+    isManualRefreshing,
   };
 }
 

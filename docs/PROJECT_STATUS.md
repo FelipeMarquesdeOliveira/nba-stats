@@ -1,7 +1,7 @@
 # NBA Stats - Project Status
 
 **Last Updated:** 2026-05-01
-**Phase:** Phase 10 - Historical Game Discovery (COMPLETE ✅)
+**Phase:** Phase 11 - Live Game Refresh Polish (COMPLETE ✅)
 
 ---
 
@@ -288,29 +288,112 @@ async getGameById(gameId: string, date?: string): Promise<Game | null> {
 
 ---
 
-## Next Phase: Phase 11 - Live Game Refresh Polish (PROPOSED)
+## Phase 11: Live Game Refresh Polish - COMPLETE ✅
+
+**Commit Hash:** (pending)
+**Pushed:** (pending)
+
+### What Was Implemented
+
+#### 1. Manual Refresh for Live Games
+
+| Feature | Implementation |
+|---------|---------------|
+| Button | `⟳ Atualizar` appears only for LIVE games |
+| Busy state | Button disabled + icon changes to `⟳` during refresh |
+| `isManualRefreshing` | New state in useLiveGame hook |
+| `refetch({ manual: true })` | Manual refresh triggers with busy flag |
+
+#### 2. Timestamp Display
+
+| Condition | Label |
+|-----------|-------|
+| Fresh data | `Atualizado: agora` |
+| Fresh data (older) | `Atualizado: há Xs` or `há Xmin` |
+| Stale data | `Última atualização bem-sucedida: ...` |
+
+**Rule:** Timestamp only updates on SUCCESS. Failed refresh keeps old timestamp.
+
+#### 3. Polling Behavior
+
+| Type | Interval | Triggered By |
+|------|----------|-------------|
+| Auto polling | 20s (live), 60s (final) | `fetchBoxscore({ retry: true })` |
+| Manual refresh | immediate | `fetchBoxscore({ manual: true })` |
+
+**Note:** Manual refresh does NOT restart the polling interval.
+
+#### 4. Error Handling for Manual Refresh
+
+| Scenario | Behavior |
+|----------|----------|
+| Success | `lastUpdated` updates, stale=false, button re-enabled |
+| Failure with existing data | `isStale=true`, data preserved, timestamp unchanged |
+| Failure with no data | Error state shown |
+
+### Test Coverage Added
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `LiveView.test.tsx` | +8 | Refresh button visibility, busy state, timestamp display |
+
+**All 134 tests passing across 10 test files.**
+
+---
+
+### Verification Results
+
+```
+✅ typecheck: No errors
+✅ lint: No errors (0 warnings)
+✅ test: 134 tests passing (126 previous + 8 new)
+✅ build: 232.62 kB (success)
+```
+
+---
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `useLiveGame.ts` | Added `isManualRefreshing` state, `refetch(options)` |
+| `LiveView.tsx` | Refresh header, timestamp, conditional button |
+| `LiveView.css` | `.refresh-header`, `.timestamp-info`, `.refresh-button` |
+| `LiveView.test.tsx` | +8 tests for refresh manual |
+
+---
+
+### Status
+- [x] Implemented
+- [x] Tests passing (134 total)
+- [x] Build successful
+- [ ] Committed (pending user approval)
+
+---
+
+## Next Phase: Phase 12 - Pregame View Enhancements (PROPOSED)
 
 ### Known Limitation
-Live game data has 20-25s polling intervals which may feel slow for users expecting real-time updates. No manual refresh trigger for live games.
+PregameView shows team records but doesn't display recent form (last 10 games) or back-to-back context in a scannable way.
 
 ### Proposed Objectives
 
-1. **Live Game Refresh** - Add refresh button for live games to force immediate polling
-2. **Last Updated Indicator** - Show exact timestamp of last data refresh
-3. **Visual Feedback** - Brief loading indicator on manual refresh
+1. **Recent Form Display** - Show last 10 games record for each team
+2. **B2B Indicator Enhancement** - Make back-to-back more prominent
+3. **Head-to-Head Context** - Show recent H2H results if available
 
 ### Scope
 
 | Item | Priority |
 |------|----------|
-| Refresh button for live games | Must |
-| Timestamp of last refresh | Should |
-| Loading indicator on refresh | Should |
-| Preserve existing polling behavior | Must |
+| Last 10 games indicator | Must |
+| B2B badge enhancement | Should |
+| Home/away record | Should |
+| Preserve existing pregame data | Must |
 
 ---
 
-*End of Phase 10*
+*End of Phase 11*
 
 ---
 

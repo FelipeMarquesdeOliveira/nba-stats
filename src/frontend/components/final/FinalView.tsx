@@ -30,7 +30,7 @@ function FinalView({ game }: FinalViewProps) {
           <span className="circuit-icon">🔌</span>
           <p className="circuit-title">Serviço temporariamente indisponível</p>
           <p className="circuit-hint">Aguarde alguns segundos e tente novamente</p>
-          <button onClick={refetch} className="retry-button">
+          <button onClick={() => refetch()} className="retry-button">
             Tentar novamente
           </button>
         </div>
@@ -44,7 +44,7 @@ function FinalView({ game }: FinalViewProps) {
         <div className="error-state">
           <p className="error-title">Erro ao carregar boxscore</p>
           <p className="error-message">{error}</p>
-          <button onClick={refetch} className="retry-button">
+          <button onClick={() => refetch()} className="retry-button">
             Tentar novamente
           </button>
         </div>
@@ -85,7 +85,7 @@ function FinalView({ game }: FinalViewProps) {
             Dados podem estar desatualizados
             {lastUpdated && ` (última att: há ${Math.floor((Date.now() - lastUpdated.getTime()) / 60000)} min)`}
           </span>
-          <button onClick={refetch} className="stale-refresh-button">
+          <button onClick={() => refetch()} className="stale-refresh-button">
             Atualizar
           </button>
         </div>
