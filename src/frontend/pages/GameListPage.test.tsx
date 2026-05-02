@@ -91,11 +91,12 @@ describe('GameListPage', () => {
   describe('date resolution', () => {
     it('uses today when no date in URL', async () => {
       mockGetGamesForDate.mockResolvedValue(mockGames);
+      const today = new Date().toISOString().split('T')[0];
 
       renderWithRoute('/games');
 
       await waitFor(() => {
-        expect(mockGetGamesForDate).toHaveBeenCalledWith('2026-05-01');
+        expect(mockGetGamesForDate).toHaveBeenCalledWith(today);
       });
     });
 
@@ -111,11 +112,12 @@ describe('GameListPage', () => {
 
     it('changing date input updates URL and triggers fetch', async () => {
       mockGetGamesForDate.mockResolvedValue(mockGames);
+      const today = new Date().toISOString().split('T')[0];
 
       renderWithRoute('/games');
 
       await waitFor(() => {
-        expect(mockGetGamesForDate).toHaveBeenCalledWith('2026-05-01');
+        expect(mockGetGamesForDate).toHaveBeenCalledWith(today);
       });
 
       // Date input exists - change would require userEvent which is complex

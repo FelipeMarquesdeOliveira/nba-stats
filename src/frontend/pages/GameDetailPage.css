@@ -24,6 +24,14 @@
   border-color: rgba(255, 255, 255, 0.4);
 }
 
+.back-button {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .detail-content {
   flex: 1;
   padding: 2rem;

@@ -220,3 +220,79 @@
   font-size: 0.9rem;
   margin-bottom: 1.5rem;
 }
+
+/* Mobile base: < 640px */
+@media (max-width: 639px) {
+  .page-header {
+    padding: 1rem 0;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .date-picker-row {
+    gap: 0.5rem;
+  }
+
+  .date-input {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .quick-nav button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .games-container {
+    padding: 0.75rem;
+  }
+
+  .game-card {
+    padding: 1rem;
+  }
+
+  .game-card-header {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .team-name {
+    font-size: 0.95rem;
+  }
+
+  .team-score {
+    font-size: 1.25rem;
+  }
+
+  .game-status {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .game-time {
+    font-size: 0.75rem;
+  }
+
+  .game-venue {
+    font-size: 0.75rem;
+  }
+}
+
+/* Tablet: 640px - 767px */
+@media (min-width: 640px) and (max-width: 767px) {
+  .page-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .games-container {
+    padding: 1rem;
+  }
+
+  .game-card {
+    padding: 1.25rem;
+  }
+}
