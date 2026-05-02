@@ -156,7 +156,7 @@ describe('FinalView', () => {
       });
 
       render(<FinalView game={mockGame} />);
-      expect(screen.getByText('Carregando boxscore...')).toBeInTheDocument();
+      expect(screen.getByText('Carregando dados...')).toBeInTheDocument();
     });
 
     it('shows circuit-open state with retry button', () => {
@@ -187,7 +187,7 @@ describe('FinalView', () => {
       });
 
       render(<FinalView game={mockGame} />);
-      expect(screen.getByText('Erro ao carregar boxscore')).toBeInTheDocument();
+      expect(screen.getByText('Erro ao carregar dados')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Tentar novamente' })).toBeInTheDocument();
     });
 
@@ -203,7 +203,7 @@ describe('FinalView', () => {
       });
 
       render(<FinalView game={mockGame} />);
-      expect(screen.getByText('Boxscore não disponível para este jogo.')).toBeInTheDocument();
+      expect(screen.getByText('Dados não disponíveis para este jogo.')).toBeInTheDocument();
     });
   });
 
@@ -259,7 +259,7 @@ describe('FinalView', () => {
       expect(screen.queryByText(/by \d+/)).not.toBeInTheDocument();
     });
 
-    it('shows venue information', () => {
+    it('shows broadcaster information', () => {
       const mockBoxscore = createMockBoxscore(108, 100);
       mockUseLiveGame.mockReturnValue({
         boxscore: mockBoxscore,
@@ -272,7 +272,7 @@ describe('FinalView', () => {
       });
 
       render(<FinalView game={mockGame} />);
-      expect(screen.getByText('Crypto.com Arena')).toBeInTheDocument();
+      expect(screen.getByText('TNT')).toBeInTheDocument();
     });
   });
 
@@ -319,9 +319,11 @@ describe('FinalView', () => {
     });
   });
 
-  describe('quarter-by-quarter', () => {
-    it('does not render quarter section when quarterScores is undefined', () => {
+  describe('edge cases', () => {
+    it('shows message when players array is empty', () => {
       const mockBoxscore = createMockBoxscore(108, 100);
+      mockBoxscore.homeTeam.players = [];
+      mockBoxscore.awayTeam.players = [];
       mockUseLiveGame.mockReturnValue({
         boxscore: mockBoxscore,
         loading: false,
@@ -333,7 +335,66 @@ describe('FinalView', () => {
       });
 
       render(<FinalView game={mockGame} />);
-      expect(screen.queryByText('Quarter by Quarter')).not.toBeInTheDocument();
+      // Shows for both teams (2 columns)
+      expect(screen.getAllByText('Estatísticas não disponíveis').length).toBe(2);
+    });
+
+    it('shows fallback when player name is missing', () => {
+      const mockBoxscore = createMockBoxscore(108, 100);
+      const playerWithMissingName = createMockPlayer('1', 28, true);
+      mockBoxscore.homeTeam.players = [
+        {
+          ...playerWithMissingName,
+          player: { ...playerWithMissingName.player, name: undefined as unknown as string }
+        }
+      ];
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated: null,
+        circuitOpen: false
+      });
+
+      render(<FinalView game={mockGame} />);
+      expect(screen.getByText('Jogador indisponível')).toBeInTheDocument();
+    });
+
+    it('does not render highlights section when highlights is empty', () => {
+      const mockBoxscore = createMockBoxscore(108, 100);
+      mockBoxscore.highlights = [];
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated: null,
+        circuitOpen: false
+      });
+
+      render(<FinalView game={mockGame} />);
+      expect(screen.queryByText('Game Highlights')).not.toBeInTheDocument();
+    });
+
+    it('handles missing teamStats gracefully', () => {
+      const mockBoxscore = createMockBoxscore(108, 100);
+      mockBoxscore.teamStats = undefined;
+      mockUseLiveGame.mockReturnValue({
+        boxscore: mockBoxscore,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        isStale: false,
+        lastUpdated: null,
+        circuitOpen: false
+      });
+
+      render(<FinalView game={mockGame} />);
+      // Should still render game summary section, stats fallback to 0
+      expect(screen.getByText('Game Summary')).toBeInTheDocument();
     });
   });
 });

@@ -17,7 +17,7 @@ function FinalView({ game }: FinalViewProps) {
       <div className="final-view">
         <div className="loading-state">
           <div className="loading-spinner">⏳</div>
-          <p>Carregando boxscore...</p>
+          <p>Carregando dados...</p>
         </div>
       </div>
     );
@@ -42,7 +42,7 @@ function FinalView({ game }: FinalViewProps) {
     return (
       <div className="final-view">
         <div className="error-state">
-          <p className="error-title">Erro ao carregar boxscore</p>
+          <p className="error-title">Erro ao carregar dados</p>
           <p className="error-message">{error}</p>
           <button onClick={() => refetch()} className="retry-button">
             Tentar novamente
@@ -56,7 +56,7 @@ function FinalView({ game }: FinalViewProps) {
     return (
       <div className="final-view">
         <div className="no-data-message">
-          <p>Boxscore não disponível para este jogo.</p>
+          <p>Dados não disponíveis para este jogo.</p>
         </div>
       </div>
     );
@@ -103,7 +103,7 @@ function FinalView({ game }: FinalViewProps) {
           {winner && absMargin > 0 && (
             <div className="win-margin">{winner.abbreviation} by {absMargin}</div>
           )}
-          {game.venue && <div className="final-venue">{game.venue}</div>}
+          {game.broadcaster && <div className="final-venue">{game.broadcaster}</div>}
         </div>
 
         <div className="final-team">
@@ -121,88 +121,64 @@ function FinalView({ game }: FinalViewProps) {
         />
       )}
 
-      <div className="game-summary">
-        <h3>Game Summary</h3>
-        <div className="summary-stats">
-          <div className="summary-team">
-            <h4>{game.awayTeam.shortName}</h4>
-            <div className="stat-row">
-              <span>Field Goals</span>
-              <span>
-                {awayStats.FGM || 0}-
-                {awayStats.FGA || 0} (
-                {fgPct(awayStats.FGM || 0, awayStats.FGA || 0)}%)
-              </span>
-            </div>
-            <div className="stat-row">
-              <span>3-Pointers</span>
-              <span>
-                {awayStats.FG3M || 0}-
-                {awayStats.FG3A || 0} (
-                {fgPct(awayStats.FG3M || 0, awayStats.FG3A || 0)}%)
-              </span>
-            </div>
-            <div className="stat-row">
-              <span>Free Throws</span>
-              <span>
-                {awayStats.FTM || 0}-
-                {awayStats.FTA || 0} (
-                {fgPct(awayStats.FTM || 0, awayStats.FTA || 0)}%)
-              </span>
-            </div>
-            <div className="stat-row">
-              <span>Rebounds</span>
-              <span>{awayStats.REB || 0}</span>
-            </div>
-            <div className="stat-row">
-              <span>Assists</span>
-              <span>{awayStats.AST || 0}</span>
-            </div>
-          </div>
-
-          <div className="summary-team">
-            <h4>{game.homeTeam.shortName}</h4>
-            <div className="stat-row">
-              <span>Field Goals</span>
-              <span>
-                {homeStats.FGM || 0}-
-                {homeStats.FGA || 0} (
-                {fgPct(homeStats.FGM || 0, homeStats.FGA || 0)}%)
-              </span>
-            </div>
-            <div className="stat-row">
-              <span>3-Pointers</span>
-              <span>
-                {homeStats.FG3M || 0}-
-                {homeStats.FG3A || 0} (
-                {fgPct(homeStats.FG3M || 0, homeStats.FG3A || 0)}%)
-              </span>
-            </div>
-            <div className="stat-row">
-              <span>Free Throws</span>
-              <span>
-                {homeStats.FTM || 0}-
-                {homeStats.FTA || 0} (
-                {fgPct(homeStats.FTM || 0, homeStats.FTA || 0)}%)
-              </span>
-            </div>
-            <div className="stat-row">
-              <span>Rebounds</span>
-              <span>{homeStats.REB || 0}</span>
-            </div>
-            <div className="stat-row">
-              <span>Assists</span>
-              <span>{homeStats.AST || 0}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="boxscore-section">
         <h3>Box Score</h3>
         <div className="boxscore-grid">
           <TeamBoxScore team={game.awayTeam} players={boxscore.awayTeam.players} />
           <TeamBoxScore team={game.homeTeam} players={boxscore.homeTeam.players} />
+        </div>
+      </div>
+
+      <div className="game-summary">
+        <h3>Team Comparison</h3>
+        <div className="comparison-table">
+          <div className="comparison-header">
+            <div className="comp-team-left">{game.awayTeam.shortName}</div>
+            <div className="comp-label"></div>
+            <div className="comp-team-right">{game.homeTeam.shortName}</div>
+          </div>
+          
+          <div className="comp-row">
+            <div className="comp-val-left">
+              {awayStats.FGM || 0}-{awayStats.FGA || 0} ({fgPct(awayStats.FGM || 0, awayStats.FGA || 0)}%)
+            </div>
+            <div className="comp-label">Field Goals</div>
+            <div className="comp-val-right">
+              {homeStats.FGM || 0}-{homeStats.FGA || 0} ({fgPct(homeStats.FGM || 0, homeStats.FGA || 0)}%)
+            </div>
+          </div>
+
+          <div className="comp-row">
+            <div className="comp-val-left">
+              {awayStats.FG3M || 0}-{awayStats.FG3A || 0} ({fgPct(awayStats.FG3M || 0, awayStats.FG3A || 0)}%)
+            </div>
+            <div className="comp-label">3-Pointers</div>
+            <div className="comp-val-right">
+              {homeStats.FG3M || 0}-{homeStats.FG3A || 0} ({fgPct(homeStats.FG3M || 0, homeStats.FG3A || 0)}%)
+            </div>
+          </div>
+
+          <div className="comp-row">
+            <div className="comp-val-left">
+              {awayStats.FTM || 0}-{awayStats.FTA || 0} ({fgPct(awayStats.FTM || 0, awayStats.FTA || 0)}%)
+            </div>
+            <div className="comp-label">Free Throws</div>
+            <div className="comp-val-right">
+              {homeStats.FTM || 0}-{homeStats.FTA || 0} ({fgPct(homeStats.FTM || 0, homeStats.FTA || 0)}%)
+            </div>
+          </div>
+
+          <div className="comp-row">
+            <div className="comp-val-left">{awayStats.REB || 0}</div>
+            <div className="comp-label">Rebounds</div>
+            <div className="comp-val-right">{homeStats.REB || 0}</div>
+          </div>
+
+          <div className="comp-row">
+            <div className="comp-val-left">{awayStats.AST || 0}</div>
+            <div className="comp-label">Assists</div>
+            <div className="comp-val-right">{homeStats.AST || 0}</div>
+          </div>
         </div>
       </div>
 
@@ -299,9 +275,18 @@ function QuarterByQuarter({ quarterScores, homeAbbr, awayAbbr }: QuarterByQuarte
 }
 
 function TeamBoxScore({ team, players }: TeamBoxScoreProps) {
-  const sortedPlayers = [...players].sort(
-    (a, b) => b.points - a.points
-  );
+  const sortedPlayers = [...players]
+    .filter((p) => p.isStarter)
+    .sort((a, b) => b.points - a.points);
+
+  if (sortedPlayers.length === 0) {
+    return (
+      <div className="boxscore-team">
+        <h4>{team.shortName}</h4>
+        <p className="no-data-inline">Estatísticas não disponíveis</p>
+      </div>
+    );
+  }
 
   return (
     <div className="boxscore-team">
@@ -323,16 +308,16 @@ function TeamBoxScore({ team, players }: TeamBoxScoreProps) {
           {sortedPlayers.map((player) => (
             <tr key={player.player.id}>
               <td className="player-cell">
-                <span className="player-name">{player.player.name}</span>
+                <span className="player-name">{player.player.name || 'Jogador indisponível'}</span>
                 <span className="player-pos">{player.player.position}</span>
               </td>
-              <td className="pts-cell">{player.points}</td>
-              <td>{player.rebounds}</td>
-              <td>{player.assists}</td>
-              <td>{player.fieldGoalPct}%</td>
-              <td>{player.threePointPct}%</td>
-              <td>{player.freeThrowPct}%</td>
-              <td className="min-cell">{player.minutesPlayed}</td>
+              <td className="pts-cell">{player.points ?? 0}</td>
+              <td>{player.rebounds ?? 0}</td>
+              <td>{player.assists ?? 0}</td>
+              <td>{((player.fieldGoalPct ?? 0) * 100).toFixed(1)}%</td>
+              <td>{((player.threePointPct ?? 0) * 100).toFixed(1)}%</td>
+              <td>{((player.freeThrowPct ?? 0) * 100).toFixed(1)}%</td>
+              <td className="min-cell">{player.minutesPlayed || '—'}</td>
             </tr>
           ))}
         </tbody>

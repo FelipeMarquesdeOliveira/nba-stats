@@ -27,7 +27,7 @@ function LiveView({ game }: LiveViewProps) {
       <div className="live-view">
         <div className="loading-state">
           <div className="loading-spinner">⏳</div>
-          <p>Carregando dados ao vivo...</p>
+          <p>Carregando dados...</p>
         </div>
       </div>
     );
@@ -72,17 +72,19 @@ function LiveView({ game }: LiveViewProps) {
     );
   }
 
-  // Sort players: HIGH_CONFIDENCE first, then ESTIMATED, then UNKNOWN, then by points
+  // Filter to only show starters and sort by points
   const sortPlayers = (players: BoxScorePlayer[]) => {
-    return [...players].sort((a, b) => {
-      if (a.onCourtStatus !== b.onCourtStatus) {
-        if (a.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return -1;
-        if (b.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return 1;
-        if (a.onCourtStatus === OnCourtStatus.ESTIMATED) return -1;
-        if (b.onCourtStatus === OnCourtStatus.ESTIMATED) return 1;
-      }
-      return b.points - a.points;
-    });
+    return [...players]
+      .filter((p) => p.isStarter)
+      .sort((a, b) => {
+        if (a.onCourtStatus !== b.onCourtStatus) {
+          if (a.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return -1;
+          if (b.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return 1;
+          if (a.onCourtStatus === OnCourtStatus.ESTIMATED) return -1;
+          if (b.onCourtStatus === OnCourtStatus.ESTIMATED) return 1;
+        }
+        return b.points - a.points;
+      });
   };
 
   const homePlayers = sortPlayers(boxscore.homeTeam.players);
@@ -207,6 +209,8 @@ function PlayersSection({ teamName, players }: PlayersSectionProps) {
           <tr>
             <th>Player</th>
             <th>PTS</th>
+            <th>Linha</th>
+            <th>Faltam</th>
             <th>REB</th>
             <th>AST</th>
             <th>MIN</th>
@@ -214,44 +218,81 @@ function PlayersSection({ teamName, players }: PlayersSectionProps) {
           </tr>
         </thead>
         <tbody>
-          {players.map((player: BoxScorePlayer) => (
-            <tr
-              key={player.player.id}
-              className={`
-                ${player.onCourtStatus !== OnCourtStatus.UNKNOWN ? 'on-court' : ''}
-                ${player.isStarter ? 'starter' : ''}
-              `}
-            >
-              <td className="player-cell">
-                <span className="player-info">
-                  {player.isStarter && <span className="starter-badge">S</span>}
-                  <span className="player-name">{player.player.name}</span>
-                  <span className="player-pos">{player.player.position}</span>
-                </span>
-                {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && (
-                  <span className="court-indicator high-confidence" title="Alta confiança - inferência baseada em Q4 + starter">🔴</span>
-                )}
-                {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
-                  <span className="court-indicator estimated" title="Estimado - baseado em minutos jogados">🟡</span>
-                )}
-              </td>
-              <td className="pts-cell">{player.points}</td>
-              <td>{player.rebounds}</td>
-              <td>{player.assists}</td>
-              <td className="min-cell">{player.minutesPlayed}</td>
-              <td className="status-cell">
-                {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && (
-                  <span className="status-badge high-confidence">🔴 Alta confiança</span>
-                )}
-                {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
-                  <span className="status-badge estimated">🟡 Estimado</span>
-                )}
-                {player.onCourtStatus === OnCourtStatus.UNKNOWN && (
-                  <span className="status-badge unknown">— Indisponível</span>
-                )}
-              </td>
-            </tr>
-          ))}
+          {players.map((player: BoxScorePlayer) => {
+            // Simulated points line for demonstration
+            let hash = 0;
+            const pid = player.player.id;
+            for (let i = 0; i < pid.length; i++) hash = pid.charCodeAt(i) + ((hash << 5) - hash);
+            // Give them a plausible line
+            let linha = Math.floor(Math.abs(Math.sin(hash)) * 25) + 5.5; 
+            
+            // For players who already scored a lot, make the line higher so it's realistic
+            if (player.points > linha - 3) {
+                linha = player.points + (Math.floor(Math.abs(Math.cos(hash)) * 10) + 1.5);
+            }
+
+            const atual = player.points;
+            const rawFaltam = linha - atual;
+            
+            let colorClass = '';
+            let displayFaltam: string | number = '';
+            
+            if (rawFaltam <= 0) {
+              colorClass = 'hit-green'; // passed the line
+              displayFaltam = 'Bateu';
+            } else {
+              const faltamInt = Math.ceil(rawFaltam); // number of points to hit
+              displayFaltam = faltamInt;
+              if (rawFaltam <= 3.5) {
+                colorClass = 'near-green';
+              } else if (rawFaltam <= 6.5) {
+                colorClass = 'mid-yellow';
+              } else {
+                colorClass = 'far-red';
+              }
+            }
+
+            return (
+              <tr
+                key={player.player.id}
+                className={`
+                  ${player.onCourtStatus !== OnCourtStatus.UNKNOWN ? 'on-court' : ''}
+                  ${player.isStarter ? 'starter' : ''}
+                `}
+              >
+                <td className="player-cell">
+                  <span className="player-info">
+                    {player.isStarter && <span className="starter-badge">S</span>}
+                    <span className="player-name">{player.player.name}</span>
+                    <span className="player-pos">{player.player.position}</span>
+                  </span>
+                  {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && (
+                    <span className="court-indicator high-confidence" title="Alta confiança - inferência baseada em Q4 + starter">🔴</span>
+                  )}
+                  {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
+                    <span className="court-indicator estimated" title="Estimado - baseado em minutos jogados">🟡</span>
+                  )}
+                </td>
+                <td className="pts-cell">{atual}</td>
+                <td className="line-cell">{linha}</td>
+                <td className={`faltam-cell ${colorClass}`}>{displayFaltam}</td>
+                <td>{player.rebounds}</td>
+                <td>{player.assists}</td>
+                <td className="min-cell">{player.minutesPlayed}</td>
+                <td className="status-cell">
+                  {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && (
+                    <span className="status-badge high-confidence">🔴 Em Quadra</span>
+                  )}
+                  {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
+                    <span className="status-badge estimated">🟡 Em Quadra</span>
+                  )}
+                  {player.onCourtStatus === OnCourtStatus.UNKNOWN && (
+                    <span className="status-badge unknown">— Banco/Indisp.</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -4,7 +4,7 @@
  */
 
 import { BoxScore, BoxScoreGateway } from '@domain/types';
-import { getBoxScore, getBoxScoreWithStatus } from '../adapters/NBAStats/boxscore';
+import { getBoxScore, getBoxScoreWithStatus } from '../adapters/ESPN/summary';
 import { cache, CacheKeys, DataSource, logger, HttpClientError } from '@data-collection/infrastructure';
 
 export class BoxScoreGatewayImpl implements BoxScoreGateway {

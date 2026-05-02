@@ -320,7 +320,7 @@ export interface QuarterScore {
 // =============================================================================
 
 export interface GameGateway {
-  getGamesForDate(date: string): Promise<Game[]>;
+  getGamesForDate(date?: string): Promise<Game[]>;
   getGameById(gameId: string, date?: string): Promise<Game | null>;
 }
 

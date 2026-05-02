@@ -30,8 +30,8 @@ const DEFAULT_CONFIGS: Record<DataSource, HttpClientConfig> = {
     retry: { maxAttempts: 3, baseDelayMs: 1_000, maxDelayMs: 8_000, jitterMs: 500 },
   },
   [DataSource.STATS_NBA_COM]: {
-    timeoutMs: 10_000,
-    retry: { maxAttempts: 3, baseDelayMs: 1_500, maxDelayMs: 8_000, jitterMs: 500 },
+    timeoutMs: 3_000,
+    retry: { maxAttempts: 1, baseDelayMs: 1_000, maxDelayMs: 3_000, jitterMs: 200 },
   },
   [DataSource.CACHE]: {
     timeoutMs: 1_000,

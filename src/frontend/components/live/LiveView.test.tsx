@@ -154,7 +154,7 @@ describe('LiveView', () => {
       });
 
       render(<LiveView game={mockGame} />);
-      expect(screen.getByText('Carregando dados ao vivo...')).toBeInTheDocument();
+      expect(screen.getByText('Carregando dados...')).toBeInTheDocument();
     });
 
     it('shows circuit-open state', () => {

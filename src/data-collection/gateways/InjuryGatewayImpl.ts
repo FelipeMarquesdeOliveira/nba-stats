@@ -33,6 +33,7 @@ export class InjuryGatewayImpl implements InjuryGateway {
   async getInjuriesByTeam(teamId: string): Promise<AvailabilityItem[]> {
     // Use cached injuries and filter by teamId
     const allInjuries = await this.getAllInjuriesCached();
+    if (!teamId) return allInjuries;
     return allInjuries.filter(injury => injury.player.id === teamId);
   }
 

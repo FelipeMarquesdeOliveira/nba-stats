@@ -4,7 +4,7 @@
  */
 
 import { Game, AvailabilityItem, GameStatus, InjuryStatus, Team, Player } from '@domain/types';
-import { ESPNEvent, ESPNInjuriesResponse } from './types';
+import { ESPNEvent, ESPNStatus, ESPNInjuriesResponse } from './types';
 
 interface TeamInput {
   id: string;
@@ -103,22 +103,42 @@ function createTeam(team?: TeamInput): Team {
 /**
  * Normalize ESPN game status to domain GameStatus
  */
-function normalizeGameStatus(status?: { state?: string; detail?: string }): GameStatus {
+function normalizeGameStatus(status?: ESPNStatus): GameStatus {
   if (!status) return GameStatus.SCHEDULED;
 
-  const state = status.state?.toLowerCase() || '';
-  const detail = status.detail?.toLowerCase() || '';
+  // ESPN embeds state in both status.state AND status.type.state
+  // Prefer status.type.state as it's the canonical field in the ESPN scoreboard API
+  const state = (status.type?.state || status.state || '').toLowerCase();
+  const detail = (status.detail || '').toLowerCase();
+  const typeName = (status.type?.name || '').toLowerCase();
 
-  if (state === 'pre' || detail.includes('scheduled')) {
-    return GameStatus.SCHEDULED;
-  }
-
-  if (state === 'post' || detail.includes('final')) {
+  // FINAL: post state or explicit final markers
+  if (
+    state === 'post' ||
+    detail.includes('final') ||
+    typeName.includes('final') ||
+    typeName === 'status_final'
+  ) {
     return GameStatus.FINAL;
   }
 
-  if (state === 'in' || detail.includes('q') || detail.includes('quarter')) {
+  // LIVE: in-progress state or quarter/half indicators
+  if (
+    state === 'in' ||
+    state === 'mi' ||
+    typeName.includes('in progress') ||
+    typeName === 'status_in_progress' ||
+    detail.includes('q') ||
+    detail.includes('quarter') ||
+    detail.includes('half') ||
+    detail.includes('ot')
+  ) {
     return GameStatus.LIVE;
+  }
+
+  // SCHEDULED: pre-game state
+  if (state === 'pre' || detail.includes('scheduled') || typeName === 'status_scheduled') {
+    return GameStatus.SCHEDULED;
   }
 
   return GameStatus.SCHEDULED;

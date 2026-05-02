@@ -12,8 +12,9 @@ export class GameGatewayImpl implements GameGateway {
    * Get all games for a specific date
    * Uses cache with fallback to stale if API fails
    */
-  async getGamesForDate(date: string): Promise<Game[]> {
-    const cacheKey = CacheKeys.games(date);
+  async getGamesForDate(date?: string): Promise<Game[]> {
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const cacheKey = CacheKeys.games(targetDate);
     const requestId = logger.generateRequestId();
 
     // Check cache first
@@ -30,7 +31,7 @@ export class GameGatewayImpl implements GameGateway {
 
     // Fetch from source
     try {
-      const games = await fetchGamesFromEspn(date);
+      const games = await fetchGamesFromEspn(targetDate);
 
       // Update cache
       cache.set(cacheKey, games, DataSource.ESPN);

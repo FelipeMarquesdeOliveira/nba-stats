@@ -170,7 +170,7 @@ describe('GameDetailPage', () => {
       });
       // Should render FinalView (boxscore fetch may still be pending/failed)
       await waitFor(() => {
-        expect(screen.getByText('Boxscore não disponível para este jogo.')).toBeInTheDocument();
+        expect(screen.getByText('Dados não disponíveis para este jogo.')).toBeInTheDocument();
       });
     });
   });

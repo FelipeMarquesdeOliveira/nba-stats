@@ -52,6 +52,7 @@ export interface ESPNStatus {
     id: string;
     name: string;
     state: string;
+    completed?: boolean;
   };
 }
 
