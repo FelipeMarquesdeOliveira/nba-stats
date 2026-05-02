@@ -30,23 +30,46 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
   const homeB2B = isBackToBack(game.homeTeam.id, game.scheduledAt, recentGames);
   const awayB2B = isBackToBack(game.awayTeam.id, game.scheduledAt, recentGames);
 
-  // For pregame, we don't have real lineup data yet - show that it's not available
-  const homeInjuries = injuries.filter(i =>
-    i.teamName?.toLowerCase().includes(game.homeTeam.abbreviation.toLowerCase()) ||
-    i.teamName?.toLowerCase().includes(game.homeTeam.name.toLowerCase())
-  );
+  // Filtro de lesões mais rigoroso para evitar jogadores de outros times
+  const filterInjuries = (team: Game['homeTeam']) => {
+    if (!team) return [];
+    
+    const searchName = team.name.toLowerCase();
+    const searchAbbr = team.abbreviation.toLowerCase();
+    const searchId = team.id;
+    
+    return injuries.filter(i => {
+      // 1. Match prioritário por ID do time (mais seguro)
+      if (searchId && i.player.teamId === searchId) return true;
 
-  const awayInjuries = injuries.filter(i =>
-    i.teamName?.toLowerCase().includes(game.awayTeam.abbreviation.toLowerCase()) ||
-    i.teamName?.toLowerCase().includes(game.awayTeam.name.toLowerCase())
-  );
+      const injuryTeam = (i.teamName || '').toLowerCase();
+      
+      // 2. Match exato do nome completo ou abreviação
+      if (injuryTeam === searchName) return true;
+      if (injuryTeam === searchAbbr) return true;
+      
+      // 3. Regra especial para Philadelphia vs Memphis (evita PHI bater em MemPHIs)
+      if (searchAbbr === 'phi' && injuryTeam.includes('memphis')) return false;
+
+      // 4. Verificação por palavras completas
+      const teamWords = searchName.split(' ');
+      const isMatchByWord = injuryTeam.split(' ').some(word => 
+        word === searchAbbr || teamWords.includes(word)
+      );
+
+      return isMatchByWord;
+    });
+  };
+
+  const homeInjuries = filterInjuries(game.homeTeam);
+  const awayInjuries = filterInjuries(game.awayTeam);
 
   if (loading) {
     return (
       <div className="pregame-view">
-        <div className="loading-state">
-          <div className="loading-spinner">⏳</div>
-          <p>Carregando dados pré-jogo...</p>
+        <div className="loading-state-premium">
+          <div className="loading-spinner"></div>
+          <p>Preparando Relatório Pré-Jogo...</p>
         </div>
       </div>
     );
@@ -55,158 +78,110 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
   if (circuitOpen) {
     return (
       <div className="pregame-view">
-        <div className="circuit-open-state">
-          <span className="circuit-icon">🔌</span>
-          <p className="circuit-title">Serviço temporariamente indisponível</p>
-          <p className="circuit-hint">Aguarde alguns segundos e tente novamente</p>
-          <button onClick={refetch} className="retry-button">
-            Tentar novamente
-          </button>
+        <div className="circuit-open-state-premium">
+          <span className="circuit-icon">⚡</span>
+          <h3>Serviço em Manutenção</h3>
+          <p>A API da ESPN está demorando para responder. Tente novamente em alguns instantes.</p>
+          <button onClick={refetch} className="premium-button">Tentar Agora</button>
         </div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="pregame-view">
-        <div className="error-state">
-          <p className="error-title">Erro ao carregar dados</p>
-          <p className="error-message">{error}</p>
-          <button onClick={refetch} className="retry-button">
-            Tentar novamente
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const showStaleIndicator = isStale && injuries.length > 0;
 
   return (
-    <div className="pregame-view">
-      {showStaleIndicator && (
-        <div className="stale-indicator">
-          <span className="warning-icon">⚠️</span>
-          <span>
-            Dados podem estar desatualizados
-            {lastUpdated && ` (última att: há ${Math.floor((Date.now() - lastUpdated.getTime()) / 60000)} min)`}
-          </span>
-          <button onClick={refetch} className="stale-refresh-button">
-            Atualizar
-          </button>
+    <div className="pregame-view animate-fadeIn">
+      {isStale && injuries.length > 0 && (
+        <div className="stale-banner">
+          <span className="stale-icon">🕒</span>
+          <span>Dados de {lastUpdated ? lastUpdated.toLocaleTimeString() : 'alguns minutos atrás'}</span>
+          <button onClick={refetch} className="refresh-link">Atualizar</button>
         </div>
       )}
 
-      <div className="pregame-header">
-        <h2>Pré-Jogo</h2>
-        <p className="game-time">
-          {new Date(game.scheduledAt).toLocaleString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-          {game.broadcaster && ` • ${game.broadcaster}`}
-        </p>
+      <div className="pregame-hero">
+        <div className="matchup-header">
+          <div className="game-status-pill">PRÉ-JOGO</div>
+          <div className="matchup-info">
+            <h2>{game.awayTeam.abbreviation} vs {game.homeTeam.abbreviation}</h2>
+            <div className="matchup-details">
+              <span>{new Date(game.scheduledAt).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+              <span className="divider">|</span>
+              <span>{new Date(game.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              {game.broadcaster && (
+                <>
+                  <span className="divider">|</span>
+                  <span className="broadcaster-tag">{game.broadcaster}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="matchup-section">
-        <TeamColumn
-          teamData={{
-            abbreviation: game.awayTeam.abbreviation,
-            name: game.awayTeam.name,
-            shortName: game.awayTeam.shortName,
-          }}
-          isBackToBack={awayB2B}
-          record={game.awayTeamRecord}
-          isHome={false}
-        />
-        <div className="vs-divider">VS</div>
-        <TeamColumn
-          teamData={{
-            abbreviation: game.homeTeam.abbreviation,
-            name: game.homeTeam.name,
-            shortName: game.homeTeam.shortName,
-          }}
-          isBackToBack={homeB2B}
-          record={game.homeTeamRecord}
-          isHome={true}
-        />
-      </div>
+      <div className="pregame-grid">
+        <div className="availability-report-card">
+          <div className="report-header">
+            <h3>Relatório de Disponibilidade</h3>
+            <span className="source-tag">ESPN Injuries</span>
+          </div>
 
-      <div className="availability-section">
-        <h3>Availability Report</h3>
-
-        <div className="availability-columns">
-          <TeamAvailability
-            teamName={game.awayTeam.shortName}
-            injuries={awayInjuries}
-          />
-          <TeamAvailability
-            teamName={game.homeTeam.shortName}
-            injuries={homeInjuries}
-          />
+          <div className="report-columns">
+            <TeamInjuryList 
+              teamName={game.awayTeam.shortName} 
+              injuries={awayInjuries} 
+            />
+            <div className="vertical-divider"></div>
+            <TeamInjuryList 
+              teamName={game.homeTeam.shortName} 
+              injuries={homeInjuries} 
+            />
+          </div>
         </div>
 
-        <div className="data-source-note">
-          <p>Fonte: ESPN Injuries</p>
-        </div>
-
-        <div className="pregame-note">
-          <p className="note-text">
-            <span className="note-label">⚠️ Lineups:</span> Dados de prováveis titulares ainda não disponíveis via API.
-            Funcionalidade em desenvolvimento.
-          </p>
+        <div className="lineup-disclaimer">
+          <div className="disclaimer-content">
+            <span className="disclaimer-icon">📋</span>
+            <div>
+              <strong>Escalações Prováveis:</strong>
+              <p>Os quintetos titulares oficiais são confirmados pela NBA cerca de 30 minutos antes do início da partida.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-interface TeamColumnProps {
-  teamData: {
-    abbreviation: string;
-    name: string;
-    shortName: string;
-  };
-  isBackToBack?: boolean;
-  record?: { home: string; away: string };
-  isHome?: boolean;
+interface TeamCardProps {
+  team: Game['homeTeam'];
+  record?: string;
+  isB2B: boolean;
+  side: 'home' | 'away';
 }
 
-function TeamColumn({ teamData, isBackToBack, record, isHome }: TeamColumnProps) {
+function TeamCard({ team, record, isB2B, side }: TeamCardProps) {
   return (
-    <div className="team-column">
-      <div className="team-header">
-        <span className="team-abbr">{teamData.abbreviation}</span>
-        <span className="team-name">{teamData.name}</span>
-        {isBackToBack && (
-          <span className="b2b-badge" title="Back-to-back - jogou ontem">
-            🔄 B2B
-          </span>
-        )}
-      </div>
-      {record && (
-        <div className="team-record">
-          {isHome ? (
-            <>
-              {record.home && <span>Casa: {record.home}</span>}
-              {record.away && <span>Fora: {record.away}</span>}
-            </>
-          ) : (
-            <>
-              {record.away && <span>Fora: {record.away}</span>}
-              {record.home && <span>Casa: {record.home}</span>}
-            </>
-          )}
+    <div className={`team-premium-card ${side}`}>
+      <div className="team-brand">
+        <span className="team-abbr-large">{team.abbreviation}</span>
+        <div className="team-name-group">
+          <span className="team-full-name">{team.name}</span>
+          <span className="team-location">{side === 'home' ? 'Mandante' : 'Visitante'}</span>
         </div>
-      )}
-      <div className="section-title">Escalação Provável</div>
-      <div className="unavailable-data">
-        <span className="unavailable-badge">Indisponível</span>
-        <p>Dados de lineup não disponíveis via API pública</p>
+      </div>
+      
+      <div className="team-stats-row">
+        {record && (
+          <div className="stat-pill">
+            <span className="label">Campanha:</span>
+            <span className="value">{record}</span>
+          </div>
+        )}
+        {isB2B && (
+          <div className="stat-pill b2b">
+            <span className="value">Back-to-Back</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -217,57 +192,44 @@ interface TeamAvailabilityProps {
   injuries: AvailabilityItem[];
 }
 
-function TeamAvailability({ teamName, injuries }: TeamAvailabilityProps) {
+function TeamInjuryList({ teamName, injuries }: TeamAvailabilityProps) {
+  const hasInjuries = injuries.length > 0;
+  
   const grouped = {
-    OUT: injuries.filter((a: AvailabilityItem) => a.status === InjuryStatus.OUT),
-    DOUBTFUL: injuries.filter((a: AvailabilityItem) => a.status === InjuryStatus.DOUBTFUL),
-    QUESTIONABLE: injuries.filter((a: AvailabilityItem) => a.status === InjuryStatus.QUESTIONABLE),
-    PROBABLE: injuries.filter((a: AvailabilityItem) => a.status === InjuryStatus.PROBABLE),
+    OUT: injuries.filter(i => i.status === InjuryStatus.OUT),
+    DOUBTFUL: injuries.filter(i => i.status === InjuryStatus.DOUBTFUL),
+    QUESTIONABLE: injuries.filter(i => i.status === InjuryStatus.QUESTIONABLE),
+    PROBABLE: injuries.filter(i => i.status === InjuryStatus.PROBABLE),
   };
 
-  const hasAny = Object.values(grouped).some((arr) => arr.length > 0);
-
   return (
-    <div className="availability-team">
+    <div className="injury-team-list">
       <h4>{teamName}</h4>
-      {!hasAny && (
-        <div className="no-injuries">
-          <p className="no-injuries-text">Nenhuma lesão reportada</p>
-          <p className="no-injuries-subtext">Dados baseados em relatórios públicos</p>
+      {!hasInjuries ? (
+        <div className="clean-status">
+          <span className="clean-icon">✅</span>
+          <p>Nenhuma lesão reportada</p>
         </div>
-      )}
-      {grouped.OUT.length > 0 && (
-        <AvailabilityGroup label="OUT" items={grouped.OUT} color="red" />
-      )}
-      {grouped.DOUBTFUL.length > 0 && (
-        <AvailabilityGroup label="DOUBTFUL" items={grouped.DOUBTFUL} color="orange" />
-      )}
-      {grouped.QUESTIONABLE.length > 0 && (
-        <AvailabilityGroup label="QUESTIONABLE" items={grouped.QUESTIONABLE} color="yellow" />
-      )}
-      {grouped.PROBABLE.length > 0 && (
-        <AvailabilityGroup label="PROBABLE" items={grouped.PROBABLE} color="green" />
+      ) : (
+        <div className="injury-groups">
+          {grouped.OUT.map((i, idx) => <InjuryItem key={idx} item={i} status="OUT" />)}
+          {grouped.DOUBTFUL.map((i, idx) => <InjuryItem key={idx} item={i} status="DOUBTFUL" />)}
+          {grouped.QUESTIONABLE.map((i, idx) => <InjuryItem key={idx} item={i} status="QUESTIONABLE" />)}
+          {grouped.PROBABLE.map((i, idx) => <InjuryItem key={idx} item={i} status="PROBABLE" />)}
+        </div>
       )}
     </div>
   );
 }
 
-interface AvailabilityGroupProps {
-  label: string;
-  items: AvailabilityItem[];
-  color: 'red' | 'orange' | 'yellow' | 'green';
-}
-
-function AvailabilityGroup({ label, items, color }: AvailabilityGroupProps) {
+function InjuryItem({ item, status }: { item: AvailabilityItem, status: string }) {
   return (
-    <div className={`availability-group group-${color}`}>
-      <div className="group-label">{label}</div>
-      {items.map((item, idx) => (
-        <div key={idx} className="availability-item">
-          <span className="avail-player">{item.player.name}</span>
-          {item.reason && <span className="avail-reason">{item.reason}</span>}
-        </div>
-      ))}
+    <div className={`premium-injury-item ${status.toLowerCase()}`}>
+      <div className="injury-main">
+        <span className="player-name">{item.player.name}</span>
+        <span className="status-badge">{status}</span>
+      </div>
+      {item.reason && <p className="injury-detail">{item.reason}</p>}
     </div>
   );
 }

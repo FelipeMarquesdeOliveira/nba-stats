@@ -140,13 +140,13 @@ function GameDetailPage() {
   const renderGameView = () => {
     switch (game.status) {
       case GameStatus.SCHEDULED:
-        return <PregameView game={game} />;
+        return <PregameView key={game.id} game={game} />;
       case GameStatus.LIVE:
-        return <LiveView game={game} />;
+        return <LiveView key={game.id} game={game} />;
       case GameStatus.FINAL:
-        return <FinalView game={game} />;
+        return <FinalView key={game.id} game={game} />;
       default:
-        return <PregameView game={game} />;
+        return <PregameView key={game.id} game={game} />;
     }
   };
 

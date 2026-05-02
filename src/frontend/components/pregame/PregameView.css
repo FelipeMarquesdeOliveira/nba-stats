@@ -1,358 +1,379 @@
-/* PregameView Component Styles */
-
+/* PregameView Premium Design */
 .pregame-view {
   color: var(--text-primary);
-  padding: var(--space-6);
+  padding: var(--space-8);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.pregame-header {
-  text-align: center;
+/* Animations */
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Hero Section */
+.pregame-hero {
   margin-bottom: var(--space-8);
+  padding: var(--space-6);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-2xl);
+  backdrop-filter: blur(20px);
 }
 
-.pregame-header h2 {
+.matchup-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.game-status-pill {
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-accent-subtle);
+  color: var(--color-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.1em;
+}
+
+.matchup-info h2 {
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
   margin-bottom: var(--space-2);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.game-time {
+.matchup-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
   color: var(--text-secondary);
   font-size: 0.95rem;
 }
 
-/* Matchup Section */
-.matchup-section {
+.matchup-details .divider {
+  opacity: 0.2;
+}
+
+.broadcaster-tag {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* Pregame Grid */
+.pregame-grid {
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
   gap: var(--space-8);
-  margin-bottom: var(--space-8);
 }
 
-.team-column {
-  flex: 1;
-  max-width: 300px;
-}
-
-.team-header {
-  text-align: center;
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-4);
-  border-bottom: 2px solid var(--border-subtle);
+/* Team Focus Section */
+.team-focus-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
   position: relative;
 }
 
-.team-header .team-abbr {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.03em;
-  margin-bottom: var(--space-1);
-}
-
-.team-header .team-name {
-  display: block;
-  font-size: 0.9rem;
-  color: var(--text-tertiary);
-}
-
-.b2b-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-left: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  background: rgba(255, 171, 0, 0.12);
-  color: var(--color-amber);
-  font-size: 0.65rem;
-  font-weight: 700;
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-  border: 1px solid rgba(255, 171, 0, 0.2);
-}
-
-.team-record {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.team-record span {
-  padding: var(--space-1) var(--space-3);
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.section-title {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: var(--space-3);
-}
-
-.vs-divider {
-  width: 60px;
-  height: 60px;
+.vs-emblem {
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-default);
   border-radius: 50%;
   font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 0.9rem;
   color: var(--text-muted);
-  align-self: center;
+  z-index: 2;
 }
 
-.unavailable-data {
-  padding: var(--space-5);
-  background: var(--bg-glass);
-  border: 1px dashed var(--border-default);
-  border-radius: var(--radius-lg);
-  text-align: center;
-}
-
-.unavailable-badge {
-  display: inline-block;
-  padding: var(--space-1) var(--space-3);
-  background: rgba(255, 82, 82, 0.12);
-  color: var(--color-red);
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-2);
-}
-
-.unavailable-data p {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-/* Availability Section - Enhanced */
-.availability-section {
+.team-premium-card {
+  flex: 1;
+  padding: var(--space-6);
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  padding: var(--space-6);
-  margin-bottom: var(--space-5);
-  backdrop-filter: blur(20px);
+  transition: all var(--transition-normal);
 }
 
-.availability-section h3 {
+.team-premium-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-xl);
+}
+
+.team-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.team-abbr-large {
   font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.team-name-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.team-full-name {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: var(--space-5);
+}
+
+.team-location {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.team-stats-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-glass);
+  border-radius: var(--radius-lg);
+  font-size: 0.85rem;
+}
+
+.stat-pill .label {
+  color: var(--text-tertiary);
+}
+
+.stat-pill .value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stat-pill.b2b {
+  background: rgba(255, 171, 0, 0.1);
+  color: var(--color-amber);
+  border: 1px solid rgba(255, 171, 0, 0.2);
+}
+
+/* Availability Report Card */
+.availability-report-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8);
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.availability-columns {
+.report-header h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.source-tag {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.report-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-6);
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--space-8);
 }
 
-.availability-team {
-  background: var(--bg-glass);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
+.vertical-divider {
+  width: 1px;
+  background: var(--border-subtle);
 }
 
-.availability-team h4 {
+.injury-team-list h4 {
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
+  margin-bottom: var(--space-4);
   color: var(--text-primary);
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border-subtle);
 }
 
-.no-injuries {
-  text-align: center;
-  padding: var(--space-4);
-}
-
-.no-injuries-text {
-  font-size: 0.9rem;
-  color: var(--text-tertiary);
-  font-style: italic;
-}
-
-.no-injuries-subtext {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: var(--space-1);
-}
-
-.availability-group {
-  margin-bottom: var(--space-4);
-}
-
-.availability-group:last-child {
-  margin-bottom: 0;
-}
-
-.group-label {
-  display: inline-flex;
+.clean-status {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--space-3);
+  justify-content: center;
+  padding: var(--space-8);
+  background: var(--bg-glass);
+  border-radius: var(--radius-lg);
+  color: var(--text-tertiary);
+  text-align: center;
 }
 
-.group-out .group-label {
-  background: rgba(255, 82, 82, 0.15);
-  color: var(--color-red);
-  border: 1px solid rgba(255, 82, 82, 0.25);
-}
-
-.group-doubtful .group-label {
-  background: rgba(249, 115, 22, 0.15);
-  color: #f97316;
-  border: 1px solid rgba(249, 115, 22, 0.25);
-}
-
-.group-questionable .group-label {
-  background: rgba(255, 171, 0, 0.12);
-  color: #ff9800;
-  border: 1px solid rgba(255, 171, 0, 0.2);
-}
-
-.group-probable .group-label {
-  background: rgba(0, 200, 83, 0.12);
-  color: var(--color-live);
-  border: 1px solid rgba(0, 200, 83, 0.2);
-}
-
-.availability-item {
-  padding: var(--space-3);
+.clean-icon {
+  font-size: 2rem;
   margin-bottom: var(--space-2);
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
 }
 
-.availability-item:last-child {
-  margin-bottom: 0;
+.injury-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.availability-item:hover {
-  border-color: var(--border-default);
-  background: var(--bg-card-hover);
+.premium-injury-item {
+  padding: var(--space-4);
+  background: var(--bg-glass);
+  border-left: 4px solid var(--border-default);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  transition: transform 0.2s ease;
 }
 
-.avail-player {
+.premium-injury-item:hover {
+  transform: translateX(4px);
+}
+
+.premium-injury-item.out { border-left-color: var(--color-red); }
+.premium-injury-item.doubtful { border-left-color: #f97316; }
+.premium-injury-item.questionable { border-left-color: #ff9800; }
+.premium-injury-item.probable { border-left-color: var(--color-live); }
+
+.injury-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.injury-main .player-name {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.status-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.out .status-badge { background: rgba(255, 82, 82, 0.1); color: var(--color-red); }
+.doubtful .status-badge { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+.questionable .status-badge { background: rgba(255, 171, 0, 0.1); color: #ff9800; }
+.probable .status-badge { background: rgba(0, 200, 83, 0.1); color: var(--color-live); }
+
+.injury-detail {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* Disclaimer */
+.lineup-disclaimer {
+  padding: var(--space-6);
+  background: var(--bg-glass);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-xl);
+}
+
+.disclaimer-content {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.disclaimer-icon {
+  font-size: 1.5rem;
+}
+
+.disclaimer-content strong {
   display: block;
   font-size: 0.9rem;
-  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 2px;
 }
 
-.avail-reason {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  line-height: 1.4;
-}
-
-.data-source-note {
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border-subtle);
-  text-align: center;
-  font-size: 0.8rem;
+.disclaimer-content p {
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
-.pregame-note {
-  margin-top: var(--space-4);
-  padding: var(--space-4);
-  background: rgba(255, 171, 0, 0.06);
-  border: 1px solid rgba(255, 171, 0, 0.12);
-  border-radius: var(--radius-md);
-}
-
-.pregame-note .note-label {
-  color: var(--color-amber);
+/* Stale Banner */
+.stale-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  background: var(--color-amber);
+  color: #000;
+  font-size: 0.8rem;
   font-weight: 600;
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
 }
 
-.pregame-note .note-text {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  line-height: 1.5;
+.refresh-link {
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+  color: inherit;
+  font-weight: 800;
 }
 
-/* Mobile Responsive */
+/* Mobile */
 @media (max-width: 768px) {
-  .pregame-view {
-    padding: var(--space-4);
-  }
-
-  .matchup-section {
-    flex-direction: column;
-    gap: var(--space-4);
-    align-items: stretch;
-  }
-
-  .team-column {
-    max-width: 100%;
-  }
-
-  .vs-divider {
-    width: 48px;
-    height: 48px;
-    font-size: 0.9rem;
-    align-self: center;
-  }
-
-  .availability-columns {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-  }
-
-  .availability-section {
-    padding: var(--space-4);
-    border-radius: var(--radius-lg);
-  }
-
-  .availability-team {
-    padding: var(--space-3);
-  }
-}
-
-@media (max-width: 480px) {
-  .team-header .team-abbr {
+  .matchup-info h2 {
     font-size: 2rem;
   }
-
-  .pregame-header h2 {
-    font-size: 1.25rem;
+  
+  .team-focus-section {
+    flex-direction: column;
   }
-
-  .availability-team h4 {
-    font-size: 0.9rem;
+  
+  .vs-emblem {
+    margin: -20px 0;
+  }
+  
+  .report-columns {
+    grid-template-columns: 1fr;
+  }
+  
+  .vertical-divider {
+    display: none;
   }
 }

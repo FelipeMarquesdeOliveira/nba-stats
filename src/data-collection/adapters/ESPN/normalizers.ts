@@ -165,11 +165,16 @@ export function normalizeInjuriesResponse(response: ESPNInjuriesResponse): Avail
 /**
  * Normalize single injury to domain AvailabilityItem
  */
-function normalizeInjury(injury: InjuryInput, teamName: string): AvailabilityItem | null {
+function normalizeInjury(injury: InjuryInput & { athlete: ESPNInjuryAthlete }, groupTeamName: string): AvailabilityItem | null {
   if (!injury.athlete) return null;
 
   const status = normalizeInjuryStatus(injury.status);
   const reason = buildInjuryReason(injury.details);
+  
+  // Tentar pegar o time específico do atleta, senão usar o nome do grupo
+  const athleteTeam = injury.athlete.team;
+  const teamId = athleteTeam?.id || '';
+  const teamName = athleteTeam?.displayName || athleteTeam?.name || groupTeamName;
 
   const player: Player = {
     id: injury.athlete.id || '',
@@ -180,7 +185,7 @@ function normalizeInjury(injury: InjuryInput, teamName: string): AvailabilityIte
     weight: '',
     birthDate: '',
     yearsExperience: 0,
-    teamId: '',
+    teamId: teamId,
     imageUrl: injury.athlete.headshot?.href,
   };
 

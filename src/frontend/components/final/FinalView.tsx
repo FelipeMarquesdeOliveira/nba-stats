@@ -1,12 +1,21 @@
+import { useState } from 'react';
 import { Game, PeriodType } from '@domain/types';
 import { useLiveGame } from '@frontend/hooks/useLiveGame';
 import './FinalView.css';
+import { PlayerHoverCard } from '../common/PlayerHoverCard';
 
 interface FinalViewProps {
   game: Game;
 }
 
+interface SelectedPlayer {
+  id: string;
+  name: string;
+  position: string;
+}
+
 function FinalView({ game }: FinalViewProps) {
+  const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const { boxscore, loading, error, refetch, isStale, lastUpdated, circuitOpen } = useLiveGame(
     game.id,
     'final'
@@ -14,7 +23,7 @@ function FinalView({ game }: FinalViewProps) {
 
   if (loading) {
     return (
-      <div className="final-view">
+      <div className="final-view animate-fadeIn">
         <div className="loading-state">
           <div className="loading-spinner">⏳</div>
           <p>Carregando dados...</p>
@@ -25,7 +34,7 @@ function FinalView({ game }: FinalViewProps) {
 
   if (circuitOpen) {
     return (
-      <div className="final-view">
+      <div className="final-view animate-fadeIn">
         <div className="circuit-open-state">
           <span className="circuit-icon">🔌</span>
           <p className="circuit-title">Serviço temporariamente indisponível</p>
@@ -40,7 +49,7 @@ function FinalView({ game }: FinalViewProps) {
 
   if (error) {
     return (
-      <div className="final-view">
+      <div className="final-view animate-fadeIn">
         <div className="error-state">
           <p className="error-title">Erro ao carregar dados</p>
           <p className="error-message">{error}</p>
@@ -54,7 +63,7 @@ function FinalView({ game }: FinalViewProps) {
 
   if (!boxscore) {
     return (
-      <div className="final-view">
+      <div className="final-view animate-fadeIn">
         <div className="no-data-message">
           <p>Dados não disponíveis para este jogo.</p>
         </div>
@@ -77,7 +86,16 @@ function FinalView({ game }: FinalViewProps) {
   const absMargin = Math.abs(margin);
 
   return (
-    <div className="final-view">
+    <div className="final-view animate-fadeIn">
+      {selectedPlayer && (
+        <PlayerHoverCard 
+          playerId={selectedPlayer.id}
+          playerName={selectedPlayer.name}
+          position={selectedPlayer.position}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
+
       {showStaleIndicator && (
         <div className="stale-indicator">
           <span className="warning-icon">⚠️</span>
@@ -124,63 +142,12 @@ function FinalView({ game }: FinalViewProps) {
       <div className="boxscore-section">
         <h3>Box Score</h3>
         <div className="boxscore-grid">
-          <TeamBoxScore team={game.awayTeam} players={boxscore.awayTeam.players} />
-          <TeamBoxScore team={game.homeTeam} players={boxscore.homeTeam.players} />
+          <TeamBoxScore team={game.awayTeam} players={boxscore.awayTeam.players} onPlayerClick={setSelectedPlayer} />
+          <TeamBoxScore team={game.homeTeam} players={boxscore.homeTeam.players} onPlayerClick={setSelectedPlayer} />
         </div>
       </div>
 
-      <div className="game-summary">
-        <h3>Team Comparison</h3>
-        <div className="comparison-table">
-          <div className="comparison-header">
-            <div className="comp-team-left">{game.awayTeam.shortName}</div>
-            <div className="comp-label"></div>
-            <div className="comp-team-right">{game.homeTeam.shortName}</div>
-          </div>
-          
-          <div className="comp-row">
-            <div className="comp-val-left">
-              {awayStats.FGM || 0}-{awayStats.FGA || 0} ({fgPct(awayStats.FGM || 0, awayStats.FGA || 0)}%)
-            </div>
-            <div className="comp-label">Field Goals</div>
-            <div className="comp-val-right">
-              {homeStats.FGM || 0}-{homeStats.FGA || 0} ({fgPct(homeStats.FGM || 0, homeStats.FGA || 0)}%)
-            </div>
-          </div>
 
-          <div className="comp-row">
-            <div className="comp-val-left">
-              {awayStats.FG3M || 0}-{awayStats.FG3A || 0} ({fgPct(awayStats.FG3M || 0, awayStats.FG3A || 0)}%)
-            </div>
-            <div className="comp-label">3-Pointers</div>
-            <div className="comp-val-right">
-              {homeStats.FG3M || 0}-{homeStats.FG3A || 0} ({fgPct(homeStats.FG3M || 0, homeStats.FG3A || 0)}%)
-            </div>
-          </div>
-
-          <div className="comp-row">
-            <div className="comp-val-left">
-              {awayStats.FTM || 0}-{awayStats.FTA || 0} ({fgPct(awayStats.FTM || 0, awayStats.FTA || 0)}%)
-            </div>
-            <div className="comp-label">Free Throws</div>
-            <div className="comp-val-right">
-              {homeStats.FTM || 0}-{homeStats.FTA || 0} ({fgPct(homeStats.FTM || 0, homeStats.FTA || 0)}%)
-            </div>
-          </div>
-
-          <div className="comp-row">
-            <div className="comp-val-left">{awayStats.REB || 0}</div>
-            <div className="comp-label">Rebounds</div>
-            <div className="comp-val-right">{homeStats.REB || 0}</div>
-          </div>
-
-          <div className="comp-row">
-            <div className="comp-val-left">{awayStats.AST || 0}</div>
-            <div className="comp-label">Assists</div>
-            <div className="comp-val-right">{homeStats.AST || 0}</div>
-          </div>
-        </div>
-      </div>
 
       {boxscore.highlights && boxscore.highlights.length > 0 && (
         <div className="highlights-section">
@@ -221,6 +188,7 @@ interface TeamBoxScoreProps {
     minutesPlayed: string;
     isStarter?: boolean;
   }>;
+  onPlayerClick: (player: SelectedPlayer) => void;
 }
 
 interface QuarterByQuarterProps {
@@ -274,10 +242,90 @@ function QuarterByQuarter({ quarterScores, homeAbbr, awayAbbr }: QuarterByQuarte
   );
 }
 
-function TeamBoxScore({ team, players }: TeamBoxScoreProps) {
-  const sortedPlayers = [...players]
-    .filter((p) => p.isStarter)
-    .sort((a, b) => b.points - a.points);
+function TeamBoxScore({ team, players, onPlayerClick }: TeamBoxScoreProps) {
+  const starters = [...players].filter((p) => p.isStarter);
+  
+  // Slots preenchidos
+  const filledSlots = {
+    PG: false,
+    SG: false,
+    SF: false,
+    PF: false,
+    C: false
+  };
+
+  // 1. Primeiro passo: Marcar o que já é explícito e definitivo nos dados
+  starters.forEach(p => {
+    const pos = p.player.position.toUpperCase();
+    if (pos === 'PG' || pos.includes('POINT GUARD')) filledSlots.PG = true;
+    if (pos === 'SG' || pos.includes('SHOOTING GUARD')) filledSlots.SG = true;
+    if (pos === 'SF' || pos.includes('SMALL FORWARD')) filledSlots.SF = true;
+    if (pos === 'PF' || pos.includes('POWER FORWARD')) filledSlots.PF = true;
+    if (pos === 'C' || pos.includes('CENTER')) filledSlots.C = true;
+    if (p.player.name.includes('Evan Mobley')) filledSlots.PF = true;
+  });
+
+  // 2. Segundo passo: Mapear posições genéricas ou corrigir conflitos
+  const processedPlayers = starters.map(p => {
+    let displayPos = p.player.position.toUpperCase();
+    const name = p.player.name;
+
+    // Caso Mobley
+    if (name.includes('Evan Mobley')) {
+      displayPos = 'PF';
+    } else if (displayPos.includes('POINT GUARD') || displayPos === 'PG') {
+      displayPos = 'PG';
+    } else if (displayPos.includes('SHOOTING GUARD') || displayPos === 'SG') {
+      displayPos = 'SG';
+    } else if (displayPos.includes('SMALL FORWARD') || displayPos === 'SF') {
+      displayPos = 'SF';
+    } else if (displayPos.includes('POWER FORWARD') || displayPos === 'PF') {
+      displayPos = 'PF';
+    } else if (displayPos.includes('CENTER') || displayPos === 'C') {
+      displayPos = 'C';
+    } else if (displayPos === 'G' || displayPos.includes('GUARD')) {
+      // Se for G, tentamos encaixar no primeiro slot livre de Guard, ou então SF
+      if (!filledSlots.PG) {
+        filledSlots.PG = true;
+        displayPos = 'PG';
+      } else if (!filledSlots.SG) {
+        filledSlots.SG = true;
+        displayPos = 'SG';
+      } else if (!filledSlots.SF) {
+        filledSlots.SF = true;
+        displayPos = 'SF';
+      } else {
+        displayPos = 'SG'; // Fallback
+      }
+    } else if (displayPos === 'F' || displayPos.includes('FORWARD')) {
+      // Se for F, tentamos encaixar no primeiro slot livre de Forward
+      if (!filledSlots.SF) {
+        filledSlots.SF = true;
+        displayPos = 'SF';
+      } else if (!filledSlots.PF) {
+        filledSlots.PF = true;
+        displayPos = 'PF';
+      } else {
+        displayPos = 'PF'; // Fallback
+      }
+    }
+
+    return { ...p, displayPos };
+  });
+
+  const positionOrder: Record<string, number> = {
+    'PG': 1,
+    'SG': 2,
+    'SF': 3,
+    'PF': 4,
+    'C': 5
+  };
+
+  const sortedPlayers = processedPlayers.sort((a, b) => {
+    const orderA = positionOrder[a.displayPos as keyof typeof positionOrder] || 99;
+    const orderB = positionOrder[b.displayPos as keyof typeof positionOrder] || 99;
+    return orderA - orderB;
+  });
 
   if (sortedPlayers.length === 0) {
     return (
@@ -308,8 +356,17 @@ function TeamBoxScore({ team, players }: TeamBoxScoreProps) {
           {sortedPlayers.map((player) => (
             <tr key={player.player.id}>
               <td className="player-cell">
-                <span className="player-name">{player.player.name || 'Jogador indisponível'}</span>
-                <span className="player-pos">{player.player.position}</span>
+                <span 
+                  className="player-name interactive" 
+                  onClick={() => onPlayerClick({
+                    id: player.player.id,
+                    name: player.player.name,
+                    position: player.displayPos
+                  })}
+                >
+                  {player.player.name || 'Jogador indisponível'}
+                </span>
+                <span className="player-pos">{player.displayPos}</span>
               </td>
               <td className="pts-cell">{player.points ?? 0}</td>
               <td>{player.rebounds ?? 0}</td>
@@ -325,5 +382,8 @@ function TeamBoxScore({ team, players }: TeamBoxScoreProps) {
     </div>
   );
 }
+
+
+
 
 export default FinalView;

@@ -24,7 +24,7 @@ function LiveView({ game }: LiveViewProps) {
 
   if (loading) {
     return (
-      <div className="live-view">
+      <div className="live-view animate-fadeIn">
         <div className="loading-state">
           <div className="loading-spinner">⏳</div>
           <p>Carregando dados...</p>
@@ -35,7 +35,7 @@ function LiveView({ game }: LiveViewProps) {
 
   if (circuitOpen) {
     return (
-      <div className="live-view">
+      <div className="live-view animate-fadeIn">
         <div className="circuit-open-state">
           <span className="circuit-icon">🔌</span>
           <p className="circuit-title">Serviço temporariamente indisponível</p>
@@ -50,7 +50,7 @@ function LiveView({ game }: LiveViewProps) {
 
   if (error) {
     return (
-      <div className="live-view">
+      <div className="live-view animate-fadeIn">
         <div className="error-state">
           <p className="error-title">Erro ao carregar dados</p>
           <p className="error-message">{error}</p>
@@ -64,7 +64,7 @@ function LiveView({ game }: LiveViewProps) {
 
   if (!boxscore) {
     return (
-      <div className="live-view">
+      <div className="live-view animate-fadeIn">
         <div className="no-data-message">
           <p>Dados não disponíveis para este jogo.</p>
         </div>
@@ -94,7 +94,7 @@ function LiveView({ game }: LiveViewProps) {
   const isLiveGame = game.status === GameStatus.LIVE;
 
   return (
-    <div className="live-view">
+    <div className="live-view animate-fadeIn">
       {isLiveGame && (
         <div className="refresh-header">
           <div className="timestamp-info">
