@@ -27,8 +27,8 @@ function parsePlayer(athleteItem: any, names: string[], teamAbbreviation: string
   const athlete = athleteItem.athlete;
   const stats = athleteItem.stats || [];
   
-  if (!stats || stats.length === 0 || !athleteItem.active) {
-    return null; // DNP or inactive
+  if (!stats || stats.length === 0) {
+    return null; // No stats available
   }
 
   const getStat = (name: string): string => {
@@ -84,7 +84,7 @@ function parsePlayer(athleteItem: any, names: string[], teamAbbreviation: string
     isOnCourt: false, // We will calculate this based on game status / heuristics
     onCourtStatus: OnCourtStatus.UNKNOWN,
     teamAbbreviation,
-    isStarter: athleteItem.starter === true,
+    isStarter: athleteItem.starter === true || athlete.starter === true,
   };
 }
 
