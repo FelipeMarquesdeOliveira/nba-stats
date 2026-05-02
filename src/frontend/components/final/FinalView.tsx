@@ -92,7 +92,7 @@ function FinalView({ game }: FinalViewProps) {
       )}
 
       <div className="final-scoreboard">
-        <div className="final-team">
+        <div className="final-team away">
           <span className="team-abbr">{game.awayTeam.abbreviation}</span>
           <span className="team-score">{boxscore.awayScore}</span>
           <span className="team-name">{game.awayTeam.name}</span>
@@ -101,12 +101,12 @@ function FinalView({ game }: FinalViewProps) {
         <div className="final-center">
           <div className="final-label">FINAL</div>
           {winner && absMargin > 0 && (
-            <div className="win-margin">{winner.abbreviation} by {absMargin}</div>
+            <div className="win-margin">{winner.abbreviation} +{absMargin}</div>
           )}
           {game.broadcaster && <div className="final-venue">{game.broadcaster}</div>}
         </div>
 
-        <div className="final-team">
+        <div className="final-team home">
           <span className="team-abbr">{game.homeTeam.abbreviation}</span>
           <span className="team-score">{boxscore.homeScore}</span>
           <span className="team-name">{game.homeTeam.name}</span>
