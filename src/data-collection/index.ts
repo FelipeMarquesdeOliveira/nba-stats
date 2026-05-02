@@ -21,6 +21,8 @@ export * from './adapters/NBAStats/normalizers';
 export { gameGateway, GameGatewayImpl } from './gateways/GameGatewayImpl';
 export { injuryGateway, InjuryGatewayImpl } from './gateways/InjuryGatewayImpl';
 export { boxScoreGateway, liveBoxScoreGateway, BoxScoreGatewayImpl, LiveBoxScoreGatewayImpl } from './gateways/BoxScoreGatewayImpl';
+export { oddsGateway, OddsGatewayImpl } from './gateways/OddsGatewayImpl';
+export { playerGateway, PlayerGatewayImpl } from './gateways/PlayerGatewayImpl';
 
 // Config
 export { DATA_COLLECTION_CONFIG } from './config';

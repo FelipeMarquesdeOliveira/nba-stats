@@ -1,4 +1,19 @@
-import { Game, InjuryStatus, AvailabilityItem } from '@domain/types';
+import { useState, useEffect } from 'react';
+import { 
+  Game, 
+  InjuryStatus, 
+  AvailabilityItem, 
+  PlayerStats, 
+  PlayerPointsLine,
+  Team,
+  GameStatus
+} from '@domain/types';
+import { 
+  getGameStarters, 
+  getTeamLastGameStarters,
+  playerGateway, 
+  oddsGateway 
+} from '@data-collection';
 import { useInjuries } from '@frontend/hooks/useInjuries';
 import './PregameView.css';
 
@@ -66,7 +81,7 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
 
   if (loading) {
     return (
-      <div className="pregame-view">
+      <div className="pregame-view animate-fadeIn">
         <div className="loading-state-premium">
           <div className="loading-spinner"></div>
           <p>Preparando Relatório Pré-Jogo...</p>
@@ -77,7 +92,7 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
 
   if (circuitOpen) {
     return (
-      <div className="pregame-view">
+      <div className="pregame-view animate-fadeIn">
         <div className="circuit-open-state-premium">
           <span className="circuit-icon">⚡</span>
           <h3>Serviço em Manutenção</h3>
@@ -138,6 +153,8 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
           </div>
         </div>
 
+        <PlayerPropAnalysis gameId={game.id} homeTeam={game.homeTeam} awayTeam={game.awayTeam} />
+
         <div className="lineup-disclaimer">
           <div className="disclaimer-content">
             <span className="disclaimer-icon">📋</span>
@@ -149,6 +166,172 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, homeTeam: Team, awayTeam: Team }) {
+  const [data, setData] = useState<{
+    away: { player: { id: string, name: string, jersey?: string }, stats: PlayerStats | null, prop: PlayerPointsLine | null }[],
+    home: { player: { id: string, name: string, jersey?: string }, stats: PlayerStats | null, prop: PlayerPointsLine | null }[]
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      try {
+        let awayStarters: { id: string, name: string, jersey?: string }[] = [];
+        let homeStarters: { id: string, name: string, jersey?: string }[] = [];
+
+        // Try current game starters first
+        const currentStarters = await getGameStarters(gameId);
+        awayStarters = currentStarters.find(s => s.teamId === awayTeam.id)?.players || [];
+        homeStarters = currentStarters.find(s => s.teamId === homeTeam.id)?.players || [];
+
+        // Fallback to last game starters if current are empty
+        if (awayStarters.length === 0) {
+          awayStarters = await getTeamLastGameStarters(awayTeam.id);
+        }
+        if (homeStarters.length === 0) {
+          homeStarters = await getTeamLastGameStarters(homeTeam.id);
+        }
+        
+        const awayData = await Promise.all(awayStarters.map(async p => {
+          try {
+            return {
+              player: p,
+              stats: await playerGateway.getPlayerLast5Stats(p.id),
+              prop: await oddsGateway.getPlayerPointsLine(p.id, gameId, p.name)
+            };
+          } catch (e) {
+            console.error(`Error loading prop for ${p.name}:`, e);
+            return { player: p, stats: null, prop: null };
+          }
+        }));
+
+        const homeData = await Promise.all(homeStarters.map(async p => {
+          try {
+            return {
+              player: p,
+              stats: await playerGateway.getPlayerLast5Stats(p.id),
+              prop: await oddsGateway.getPlayerPointsLine(p.id, gameId, p.name)
+            };
+          } catch (e) {
+            console.error(`Error loading prop for ${p.name}:`, e);
+            return { player: p, stats: null, prop: null };
+          }
+        }));
+
+        setData({ away: awayData, home: homeData });
+      } catch (e) {
+        console.error('Error loading prop data:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [gameId, homeTeam.id, awayTeam.id, refreshKey]);
+
+  if (loading) return (
+    <div className="props-side-by-side loading-state">
+       <div className="loading-spinner-mini"></div>
+       <span>Analisando tendências dos titulares...</span>
+    </div>
+  );
+  
+  if (!data) return null;
+
+  return (
+    <div className="props-side-by-side animate-fadeIn">
+      {/* Away Team Props */}
+      <div className="props-team-column">
+        <div className="props-team-header" style={{ borderLeftColor: awayTeam.primaryColor || '#666' }}>
+          <h3>{awayTeam.name} - Props</h3>
+        </div>
+        <table className="props-mini-table">
+          <thead>
+            <tr>
+              <th>Jogador / Últimos 5</th>
+              <th className="text-center">Média L5</th>
+              <th className="text-center">Linha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.away.map((item, idx) => (
+              <PlayerPropRow 
+                key={idx}
+                name={item.player.name}
+                number={item.player.jersey || ""}
+                last5={item.stats?.last5 || []}
+                line={item.prop?.line || 0}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="props-divider"></div>
+
+      {/* Home Team Props */}
+      <div className="props-team-column">
+        <div className="props-team-header" style={{ borderLeftColor: homeTeam.primaryColor || '#666' }}>
+          <h3>{homeTeam.name} - Props</h3>
+        </div>
+        <table className="props-mini-table">
+          <thead>
+            <tr>
+              <th>Jogador / Últimos 5</th>
+              <th className="text-center">Média L5</th>
+              <th className="text-center">Linha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.home.map((item, idx) => (
+              <PlayerPropRow 
+                key={idx}
+                name={item.player.name}
+                number={item.player.jersey || ""}
+                last5={item.stats?.last5 || []}
+                line={item.prop?.line || 0}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function PlayerPropRow({ name, number, last5, line }: { name: string; number: string; last5: number[]; line: number }) {
+  const avg = last5.reduce((a, b) => a + b, 0) / last5.length;
+  // Signal value only if average is at least 0.5 points above the line
+  const isAvgHigher = avg >= (line + 0.5);
+  
+  return (
+    <tr>
+      <td>
+        <div className="prop-player-cell-mini">
+          <div className="p-avatar-mini">{number}</div>
+          <div className="p-info">
+            <span className="p-name-mini">{name}</span>
+            <div className="p-last-5-mini">
+              {last5.map((val, i) => (
+                <span key={i} className={`l5-box-mini ${val >= line ? 'hit' : 'miss'}`}>{val}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="text-center prop-avg-cell">
+        <span className="prop-avg-val">{avg.toFixed(1)}</span>
+      </td>
+      <td className="text-center prop-line-cell">
+        <div className={`prop-line-box ${isAvgHigher ? 'value-signal' : ''}`}>
+          <span className="prop-line-val">{line}</span>
+        </div>
+      </td>
+    </tr>
   );
 }
 

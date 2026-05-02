@@ -337,8 +337,25 @@ export interface InjuryGateway {
   getInjuriesByTeam(teamId: string): Promise<AvailabilityItem[]>;
 }
 
+export interface PlayerPointsLine {
+  playerId: string;
+  line: number;
+  overOdds?: number;
+  underOdds?: number;
+}
+
+export interface PlayerStats {
+  id: string;
+  last5: number[];
+  avg: number;
+}
+
+export interface PlayerGateway {
+  getPlayerLast5Stats(playerId: string): Promise<PlayerStats | null>;
+}
+
 export interface OddsGateway {
-  getPlayerPointsLine(playerId: string, gameId: string): Promise<PlayerPointsLine | null>;
+  getPlayerPointsLine(playerId: string, gameId: string, name?: string): Promise<PlayerPointsLine | null>;
   getTeamPointsLine(teamId: string, gameId: string): Promise<TeamPointsLine | null>;
   getGameOdds(gameId: string): Promise<{
     homeSpread: number;

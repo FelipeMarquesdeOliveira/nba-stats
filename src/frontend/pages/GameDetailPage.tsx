@@ -158,7 +158,7 @@ function GameDetailPage() {
         </button>
       </header>
 
-      <main className="detail-content">{renderGameView()}</main>
+      <main className="detail-content animate-fadeIn" key={gameId}>{renderGameView()}</main>
     </div>
   );
 }

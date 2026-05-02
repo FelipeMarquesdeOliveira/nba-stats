@@ -60,6 +60,10 @@ export function normalizeEventToGame(event: ESPNEvent): Game {
     broadcaster: competition.broadcasts?.map(b => b.names[0]).join(', '),
     homeTeamRecord: homeRecords,
     awayTeamRecord: awayRecords,
+    odds: competition.odds?.[0] ? {
+      spread: (competition.odds[0] as any).details,
+      overUnder: (competition.odds[0] as any).overUnder?.toString(),
+    } : undefined,
   };
 }
 
@@ -202,6 +206,15 @@ function normalizeInjury(injury: InjuryInput & { athlete: ESPNInjuryAthlete }, g
  * Map ESPN status string to domain InjuryStatus
  */
 function normalizeInjuryStatus(espnStatus: string): InjuryStatus {
+  const status = (espnStatus || '').toUpperCase();
+  
+  // Mapeamento abrangente para diferentes formatos da ESPN
+  if (status.includes('OUT')) return InjuryStatus.OUT;
+  if (status.includes('DOUBTFUL')) return InjuryStatus.DOUBTFUL;
+  if (status.includes('QUESTIONABLE') || status.includes('GTD')) return InjuryStatus.QUESTIONABLE;
+  if (status.includes('PROBABLE') || status.includes('DAY-TO-DAY') || status.includes('DTD')) return InjuryStatus.PROBABLE;
+  
+  // Mapeamentos específicos por ID/Constante se existirem
   const statusMap: Record<string, InjuryStatus> = {
     'INJURY_STATUS_OUT': InjuryStatus.OUT,
     'INJURY_STATUS_DOUBTFUL': InjuryStatus.DOUBTFUL,
