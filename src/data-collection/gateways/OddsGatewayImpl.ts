@@ -36,13 +36,15 @@ interface EventPropsCache {
 }
 
 export class OddsGatewayImpl implements OddsGateway {
-  private eventPropsCache: Map<string, EventPropsCache> = new Map();
-  private eventsCache: any[] | null = null;
+  private eventPropsCache: Map<string, EventPropsCache> = new Map(); // keyed by Odds API event ID
+  private eventsCache: any[] | null = null; // raw event list from Odds API
   private eventsLastUpdate: number = 0;
   private apiKeys: string[] = [];
   private currentKeyIndex: number = 0;
   private _isLive: boolean = false;
   private fetchPromise: Promise<void> | null = null;
+  // Maps ESPN gameId → Odds API event ID (set externally before fetching)
+  private gameIdToOddsEventId: Map<string, string> = new Map();
 
   // ─── API Key Management ───────────────────────────────────────
 
@@ -260,6 +262,41 @@ export class OddsGatewayImpl implements OddsGateway {
     return this.fetchPromise;
   }
 
+  // ─── Game Context (called by LiveView to bind ESPN game to Odds event) ───────
+
+  /**
+   * Registers the ESPN gameId ↔ team names so we can find the correct
+   * Odds API event when fetching player props.
+   * Call this once per game when the LiveView mounts.
+   */
+  setGameContext(espnGameId: string, homeTeamName: string, awayTeamName: string) {
+    if (this.gameIdToOddsEventId.has(espnGameId)) return; // already resolved
+    this._pendingGameContexts.set(espnGameId, {
+      home: homeTeamName.toLowerCase(),
+      away: awayTeamName.toLowerCase()
+    });
+  }
+
+  private _pendingGameContexts: Map<string, { home: string; away: string }> = new Map();
+
+  private resolveGameContexts() {
+    if (!this.eventsCache) return;
+    for (const [espnId, ctx] of this._pendingGameContexts.entries()) {
+      for (const event of this.eventsCache) {
+        const eHome = (event.home_team || '').toLowerCase();
+        const eAway = (event.away_team || '').toLowerCase();
+        const homeMatch = eHome.includes(ctx.home) || ctx.home.includes(eHome.split(' ').pop() || '');
+        const awayMatch = eAway.includes(ctx.away) || ctx.away.includes(eAway.split(' ').pop() || '');
+        if (homeMatch && awayMatch) {
+          this.gameIdToOddsEventId.set(espnId, event.id);
+          this._pendingGameContexts.delete(espnId);
+          console.log(`🎯 [ODDS] Jogo mapeado: ESPN ${espnId} → Odds ${event.id} (${event.away_team} @ ${event.home_team})`);
+          break;
+        }
+      }
+    }
+  }
+
   // ─── Main Interface ───────────────────────────────────────────
 
   async getPlayerPointsLine(playerId: string, gameId: string, name?: string): Promise<PlayerPointsLine | null> {
@@ -282,8 +319,17 @@ export class OddsGatewayImpl implements OddsGateway {
     // Load all props (cached/deduplicated)
     await this.ensurePropsLoaded();
 
-    // Find player in cache
-    const match = this.findPlayer(normalizedName);
+    // Resolve any pending game→event mappings now that we have the event list
+    this.resolveGameContexts();
+
+    // Find the specific Odds API event for this ESPN game
+    const oddsEventId = this.gameIdToOddsEventId.get(gameId);
+
+    // Search only within the correct event; fallback to global search if mapping not yet available
+    const match = oddsEventId
+      ? this.findPlayerInEvent(normalizedName, oddsEventId)
+      : this.findPlayerGlobal(normalizedName);
+
     if (match) {
       return {
         playerId: playerId.toString(),
@@ -297,34 +343,59 @@ export class OddsGatewayImpl implements OddsGateway {
     }
 
     if (this._isLive) {
-      console.log(`🔎 [ODDS] Nenhuma linha encontrada para: ${normalizedName}`);
+      console.log(`🔎 [ODDS] Sem linha para: ${normalizedName} | eventId: ${oddsEventId || 'não mapeado'}`);
     }
 
     return null;
   }
 
   /**
-   * Fuzzy search: exact name -> last name fallback
+   * Search within a specific Odds API event (preferred — 100% correct game)
    */
-  private findPlayer(normalizedName: string): { line: number; over: number; under: number } | null {
+  private findPlayerInEvent(normalizedName: string, oddsEventId: string): { line: number; over: number; under: number } | null {
+    const cached = this.eventPropsCache.get(oddsEventId);
+    if (!cached) return null;
+    return this.matchInProps(normalizedName, cached.props);
+  }
+
+  /**
+   * Fallback global search (when game mapping not yet available)
+   */
+  private findPlayerGlobal(normalizedName: string): { line: number; over: number; under: number } | null {
     for (const [eventId, cached] of this.eventPropsCache.entries()) {
       if (eventId.startsWith('__')) continue;
+      const result = this.matchInProps(normalizedName, cached.props);
+      if (result) return result;
+    }
+    return null;
+  }
 
-      // 1. Exact match (normalized)
-      for (const [key, val] of Object.entries(cached.props)) {
-        if (key === normalizedName && val.line > 0) return val;
-      }
+  /**
+   * Exact match → first-name initial + last name → last name only
+   */
+  private matchInProps(normalizedName: string, props: CachedProps): { line: number; over: number; under: number } | null {
+    // 1. Exact match
+    if (props[normalizedName]?.line > 0) return props[normalizedName];
 
-      // 2. Last name fallback (handle variations like "Stephen" vs "Steph")
-      const parts = normalizedName.split(' ');
-      const lastName = parts[parts.length - 1];
-      if (lastName.length < 3) continue;
+    const parts = normalizedName.split(' ');
+    const lastName = parts[parts.length - 1];
+    const firstInitial = parts[0]?.[0] || '';
 
-      for (const [key, val] of Object.entries(cached.props)) {
+    // 2. First initial + last name (e.g. "p banchero" matches "paolo banchero")
+    for (const [key, val] of Object.entries(props)) {
+      if (val.line <= 0) continue;
+      const kParts = key.split(' ');
+      const kLast = kParts[kParts.length - 1];
+      const kFirst = kParts[0]?.[0] || '';
+      if (kLast === lastName && kFirst === firstInitial) return val;
+    }
+
+    // 3. Last name only (fallback, only if >= 4 chars to avoid false positives)
+    if (lastName.length >= 4) {
+      for (const [key, val] of Object.entries(props)) {
         if (val.line <= 0) continue;
-        const cacheParts = key.split(' ');
-        const cacheLastName = cacheParts[cacheParts.length - 1];
-        if (cacheLastName === lastName) return val;
+        const kLast = key.split(' ').pop() || '';
+        if (kLast === lastName) return val;
       }
     }
 

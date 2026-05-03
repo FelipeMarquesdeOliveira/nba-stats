@@ -45,15 +45,17 @@ function LiveView({ game }: LiveViewProps) {
   const prevOnCourtRef = useRef<Record<string, OnCourtStatus>>({});
   const [notifications, setNotifications] = useState<LiveNotification[]>([]);
 
-  // ─── Auto Live Mode Activation ──────────────────────────────
+  // ─── Auto Live Mode + Game Context ──────────────────────────
   useEffect(() => {
     const isLive = game.status === GameStatus.LIVE;
     (oddsGateway as OddsGatewayImpl).setLiveMode(isLive);
+    // Register team names so the gateway maps this ESPN game to the right Odds API event
+    (oddsGateway as OddsGatewayImpl).setGameContext(game.id, game.homeTeam.name, game.awayTeam.name);
     
     return () => {
       (oddsGateway as OddsGatewayImpl).setLiveMode(false);
     };
-  }, [game.status]);
+  }, [game.status, game.id, game.homeTeam.name, game.awayTeam.name]);
 
   // ─── Track Substitutions ────────────────────────────────────
   useEffect(() => {
