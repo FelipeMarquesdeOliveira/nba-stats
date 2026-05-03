@@ -3,26 +3,27 @@ import { OddsGateway, PlayerPointsLine, TeamPointsLine } from '@domain/types';
 import { logger, DataSource } from '../infrastructure';
 
 /**
- * The Odds API Integration
+ * The Odds API — Smart Caching Strategy
  * 
- * Supports multiple API keys for credit rotation.
- * Smart caching: longer cache pre-game, shorter during live games.
+ * PRÉ-JOGO (3 fetches por jogo por dia = ~3 créditos):
+ *   1. Quando o jogo aparece no scoreboard (anúncio)
+ *   2. Check matinal (9h) — via cache de 6 horas
+ *   3. 1 hora antes do tip-off — cache expira automaticamente
  * 
- * Setup:
- *   .env -> VITE_ODDS_API_KEY=key1
- *   .env -> VITE_ODDS_API_KEY_2=key2
- *   .env -> VITE_ODDS_API_KEY_3=key3
- *   .env -> VITE_ODDS_API_KEY_4=key4
- *   .env -> VITE_ODDS_API_KEY_5=key5
- *   Or via browser console: localStorage.setItem('ODDS_API_KEYS', 'key1,key2,key3')
+ * AO VIVO (cache de 90 segundos):
+ *   - Atualiza a cada 90s focando nos jogadores que estão em quadra
+ *   - Roda usando rotação de 6 chaves = ~3000 créditos/mês
+ * 
+ * Setup: até 6 chaves no .env (VITE_ODDS_API_KEY, _2, _3, _4, _5, _6)
  */
 
 const ODDS_API_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_nba';
 
 // Cache durations
-const CACHE_PRE_GAME = 30 * 60 * 1000;   // 30 min — lines barely move pre-game
-const CACHE_LIVE = 2 * 60 * 1000;         // 2 min — lines move fast during live
-const CACHE_EVENTS = 60 * 60 * 1000;      // 1 hour — events list rarely changes
+const CACHE_PRE_GAME_EARLY = 6 * 60 * 60 * 1000;  // 6 horas — de manhã até perto do jogo
+const CACHE_PRE_GAME_CLOSE = 60 * 60 * 1000;       // 1 hora — última hora antes do jogo
+const CACHE_LIVE = 90 * 1000;                        // 90 segundos — ao vivo
+const CACHE_EVENTS = 2 * 60 * 60 * 1000;            // 2 horas — lista de eventos
 
 interface CachedProps {
   [playerName: string]: { line: number; over: number; under: number };
@@ -31,6 +32,7 @@ interface CachedProps {
 interface EventPropsCache {
   props: CachedProps;
   fetchedAt: number;
+  commenceTime?: string; // ISO date of game start
 }
 
 export class OddsGatewayImpl implements OddsGateway {
@@ -39,25 +41,25 @@ export class OddsGatewayImpl implements OddsGateway {
   private eventsLastUpdate: number = 0;
   private apiKeys: string[] = [];
   private currentKeyIndex: number = 0;
-  private isLive: boolean = false;
+  private _isLive: boolean = false;
+  private fetchPromise: Promise<void> | null = null;
 
-  /**
-   * Loads all available API keys from env vars and localStorage
-   */
+  // ─── API Key Management ───────────────────────────────────────
+
   private getApiKeys(): string[] {
     if (this.apiKeys.length > 0) return this.apiKeys;
 
     const keys: string[] = [];
-
-    // From Vite env vars
     const env = (import.meta as any).env || {};
-    if (env.VITE_ODDS_API_KEY) keys.push(env.VITE_ODDS_API_KEY);
-    if (env.VITE_ODDS_API_KEY_2) keys.push(env.VITE_ODDS_API_KEY_2);
-    if (env.VITE_ODDS_API_KEY_3) keys.push(env.VITE_ODDS_API_KEY_3);
-    if (env.VITE_ODDS_API_KEY_4) keys.push(env.VITE_ODDS_API_KEY_4);
-    if (env.VITE_ODDS_API_KEY_5) keys.push(env.VITE_ODDS_API_KEY_5);
+    
+    // Load from env vars (VITE_ODDS_API_KEY, _2, _3, _4, _5, _6)
+    const suffixes = ['', '_2', '_3', '_4', '_5', '_6'];
+    for (const s of suffixes) {
+      const k = env[`VITE_ODDS_API_KEY${s}`];
+      if (k && k.trim()) keys.push(k.trim());
+    }
 
-    // From localStorage (comma-separated)
+    // Load from localStorage
     try {
       const localKeys = localStorage.getItem('ODDS_API_KEYS');
       if (localKeys) {
@@ -65,18 +67,15 @@ export class OddsGatewayImpl implements OddsGateway {
           if (!keys.includes(k)) keys.push(k);
         });
       }
-      // Also check legacy single key
-      const singleKey = localStorage.getItem('ODDS_API_KEY');
-      if (singleKey && !keys.includes(singleKey)) keys.push(singleKey);
-    } catch (_) { /* SSR safe */ }
+    } catch (_) {}
 
     this.apiKeys = keys;
+    if (keys.length > 0) {
+      console.log(`🔑 [ODDS] ${keys.length} API key(s) carregadas — ${keys.length * 500} créditos/mês`);
+    }
     return keys;
   }
 
-  /**
-   * Returns the next API key using round-robin rotation
-   */
   private getNextKey(): string | null {
     const keys = this.getApiKeys();
     if (keys.length === 0) return null;
@@ -85,115 +84,117 @@ export class OddsGatewayImpl implements OddsGateway {
     return key;
   }
 
-  /**
-   * Set live mode (shorter cache intervals)
-   * Call this from the LiveView component when a game goes live
-   */
+  // ─── Public API ───────────────────────────────────────────────
+
+  /** Ativa o modo ao vivo (cache de 90s) */
   setLiveMode(live: boolean) {
-    this.isLive = live;
-    if (live) {
-      console.log('🔴 [ODDS] Modo AO VIVO ativado — atualizando props a cada 2 min');
+    if (this._isLive !== live) {
+      this._isLive = live;
+      if (live) {
+        console.log('🔴 [ODDS] Modo AO VIVO — atualizando a cada 90s');
+        // Limpa cache para forçar refresh imediato
+        this.eventPropsCache.clear();
+      } else {
+        console.log('⏸️ [ODDS] Modo PRÉ-JOGO — cache econômico');
+      }
     }
   }
 
-  /**
-   * Force refresh all cached props (useful for live games)
-   */
+  get isLive() { return this._isLive; }
+
+  /** Força refresh imediato */
   forceRefresh() {
     this.eventPropsCache.clear();
-    console.log('🔄 [ODDS] Cache limpo — próxima busca trará dados frescos');
+    this.fetchPromise = null;
+    console.log('🔄 [ODDS] Cache limpo');
   }
 
+  // ─── Smart Cache Logic ────────────────────────────────────────
+
   /**
-   * Fetches all NBA events (cached for 1 hour)
+   * Determina o tempo máximo de cache com base no estado do jogo
+   * e proximidade do tip-off
    */
+  private getCacheDuration(commenceTime?: string): number {
+    if (this._isLive) return CACHE_LIVE;
+
+    if (commenceTime) {
+      const msUntilGame = new Date(commenceTime).getTime() - Date.now();
+      
+      // Menos de 1h para o jogo: cache de 1h (vai buscar de novo)
+      if (msUntilGame < 60 * 60 * 1000) return CACHE_PRE_GAME_CLOSE;
+      
+      // Mais de 1h: cache de 6h (economiza créditos)
+      return CACHE_PRE_GAME_EARLY;
+    }
+
+    return CACHE_PRE_GAME_EARLY;
+  }
+
+  private isCacheValid(eventId: string): boolean {
+    const cached = this.eventPropsCache.get(eventId);
+    if (!cached) return false;
+    const maxAge = this.getCacheDuration(cached.commenceTime);
+    return (Date.now() - cached.fetchedAt) < maxAge;
+  }
+
+  // ─── API Fetching ─────────────────────────────────────────────
+
+  private async fetchWithRetry(url: string): Promise<Response | null> {
+    const key1 = this.getNextKey();
+    if (!key1) return null;
+
+    const fullUrl = url + (url.includes('?') ? '&' : '?') + `apiKey=${key1}`;
+    
+    try {
+      const res = await fetch(fullUrl);
+      
+      if (res.ok) {
+        const remaining = res.headers.get('x-requests-remaining');
+        if (remaining) {
+          console.log(`📊 [ODDS] Key ...${key1.slice(-6)} → ${remaining} créditos restantes`);
+        }
+        return res;
+      }
+
+      // Rate limited? Try another key
+      if (res.status === 429 || res.status === 401) {
+        const key2 = this.getNextKey();
+        if (key2 && key2 !== key1) {
+          const retryUrl = url + (url.includes('?') ? '&' : '?') + `apiKey=${key2}`;
+          const retry = await fetch(retryUrl);
+          if (retry.ok) return retry;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   private async fetchEvents(): Promise<any[]> {
     const now = Date.now();
     if (this.eventsCache && (now - this.eventsLastUpdate) < CACHE_EVENTS) {
       return this.eventsCache;
     }
 
-    const apiKey = this.getNextKey();
-    if (!apiKey) return [];
+    const res = await this.fetchWithRetry(`${ODDS_API_BASE}/events`);
+    if (!res) return this.eventsCache || [];
 
-    try {
-      const res = await fetch(`${ODDS_API_BASE}/events?apiKey=${apiKey}`);
-      if (!res.ok) {
-        // If rate limited, try next key
-        if (res.status === 429) {
-          const nextKey = this.getNextKey();
-          if (nextKey && nextKey !== apiKey) {
-            const retry = await fetch(`${ODDS_API_BASE}/events?apiKey=${nextKey}`);
-            if (retry.ok) {
-              this.eventsCache = await retry.json();
-              this.eventsLastUpdate = now;
-              return this.eventsCache || [];
-            }
-          }
-        }
-        return this.eventsCache || [];
-      }
-      
-      // Log remaining credits from response headers
-      const remaining = res.headers.get('x-requests-remaining');
-      const used = res.headers.get('x-requests-used');
-      if (remaining) {
-        console.log(`📊 [ODDS] Créditos restantes: ${remaining} | Usados: ${used}`);
-      }
-      
-      this.eventsCache = await res.json();
-      this.eventsLastUpdate = now;
-      return this.eventsCache || [];
-    } catch (e) {
-      logger.error(DataSource.ESPN, 'OddsAPI events fetch error', '', e);
-      return this.eventsCache || [];
-    }
+    this.eventsCache = await res.json();
+    this.eventsLastUpdate = now;
+    return this.eventsCache || [];
   }
 
-  /**
-   * Fetches player_points props for a specific event
-   */
   private async fetchPlayerProps(oddsEventId: string): Promise<CachedProps> {
-    const apiKey = this.getNextKey();
-    if (!apiKey) return {};
+    const url = `${ODDS_API_BASE}/events/${oddsEventId}/odds?regions=eu&markets=player_points&oddsFormat=decimal`;
+    const res = await this.fetchWithRetry(url);
+    if (!res) return {};
 
-    try {
-      const url = `${ODDS_API_BASE}/events/${oddsEventId}/odds?apiKey=${apiKey}&regions=eu&markets=player_points&oddsFormat=decimal`;
-      const res = await fetch(url);
-      
-      if (!res.ok) {
-        // Rate limited? Try next key
-        if (res.status === 429) {
-          const nextKey = this.getNextKey();
-          if (nextKey && nextKey !== apiKey) {
-            const retry = await fetch(`${ODDS_API_BASE}/events/${oddsEventId}/odds?apiKey=${nextKey}&regions=eu&markets=player_points&oddsFormat=decimal`);
-            if (retry.ok) {
-              return this.parsePropsResponse(await retry.json());
-            }
-          }
-        }
-        return {};
-      }
-
-      // Log remaining credits
-      const remaining = res.headers.get('x-requests-remaining');
-      if (remaining) {
-        console.log(`📊 [ODDS] Créditos restantes: ${remaining} (key ...${apiKey.slice(-6)})`);
-      }
-
-      return this.parsePropsResponse(await res.json());
-    } catch (e) {
-      logger.error(DataSource.ESPN, 'OddsAPI player props fetch error', oddsEventId, e);
-      return {};
-    }
-  }
-
-  /**
-   * Parses the API response into our CachedProps format
-   */
-  private parsePropsResponse(data: any): CachedProps {
+    const data = await res.json();
     const props: CachedProps = {};
-    
+
     for (const bookmaker of (data.bookmakers || [])) {
       const market = bookmaker.markets?.find((m: any) => m.key === 'player_points');
       if (!market) continue;
@@ -218,52 +219,60 @@ export class OddsGatewayImpl implements OddsGateway {
     return props;
   }
 
-  /**
-   * Checks if a specific event's cache is still valid
-   */
-  private isCacheValid(eventId: string): boolean {
-    const cached = this.eventPropsCache.get(eventId);
-    if (!cached) return false;
-    
-    const maxAge = this.isLive ? CACHE_LIVE : CACHE_PRE_GAME;
-    return (Date.now() - cached.fetchedAt) < maxAge;
-  }
+  // ─── Core: Fetch All Events (deduplicated) ────────────────────
 
   /**
-   * Main method: fetches player props from The Odds API with smart caching
+   * Loads props for all events that need refreshing.
+   * Uses a single promise to avoid duplicate concurrent fetches.
    */
+  private async ensurePropsLoaded(): Promise<void> {
+    if (this.fetchPromise) return this.fetchPromise;
+
+    this.fetchPromise = (async () => {
+      try {
+        const events = await this.fetchEvents();
+        
+        for (const event of events) {
+          if (this.isCacheValid(event.id)) continue;
+
+          const props = await this.fetchPlayerProps(event.id);
+          this.eventPropsCache.set(event.id, {
+            props,
+            fetchedAt: Date.now(),
+            commenceTime: event.commence_time
+          });
+        }
+      } finally {
+        this.fetchPromise = null;
+      }
+    })();
+
+    return this.fetchPromise;
+  }
+
+  // ─── Main Interface ───────────────────────────────────────────
+
   async getPlayerPointsLine(playerId: string, gameId: string, name?: string): Promise<PlayerPointsLine | null> {
     const pName = name?.toLowerCase() || '';
     const normalizedName = pName.replace(/[^a-z ]/g, '').trim();
 
-    // Ensure we have API keys
-    const keys = this.getApiKeys();
-    if (keys.length === 0) {
+    // Check keys
+    if (this.getApiKeys().length === 0) {
       if (!this.eventPropsCache.has('__warned')) {
         console.warn(
-          '⚠️ [NBA-STATS] Para linhas automáticas, configure suas API keys:\n' +
-          '   1. Cadastre-se em https://the-odds-api.com/ (grátis)\n' +
-          '   2. No .env, adicione: VITE_ODDS_API_KEY=sua-chave\n' +
-          '   3. Para múltiplas: VITE_ODDS_API_KEY_2=outra-chave\n' +
-          '   4. Reinicie o dev server'
+          '⚠️ [NBA-STATS] Configure suas API keys no .env:\n' +
+          '   VITE_ODDS_API_KEY=sua-chave\n' +
+          '   VITE_ODDS_API_KEY_2=outra-chave'
         );
         this.eventPropsCache.set('__warned', { props: {}, fetchedAt: Date.now() });
       }
       return null;
     }
 
-    // Get events list
-    const events = await this.fetchEvents();
+    // Load all props (cached/deduplicated)
+    await this.ensurePropsLoaded();
 
-    // Fetch props for each event (if cache expired)
-    for (const event of events) {
-      if (!this.isCacheValid(event.id)) {
-        const props = await this.fetchPlayerProps(event.id);
-        this.eventPropsCache.set(event.id, { props, fetchedAt: Date.now() });
-      }
-    }
-
-    // Search all cached events for this player
+    // Find player in cache
     const match = this.findPlayer(normalizedName);
     if (match) {
       return {
@@ -278,26 +287,25 @@ export class OddsGatewayImpl implements OddsGateway {
   }
 
   /**
-   * Searches all cached event props for a player by name
+   * Fuzzy search: exact name -> last name fallback
    */
   private findPlayer(normalizedName: string): { line: number; over: number; under: number } | null {
     for (const [eventId, cached] of this.eventPropsCache.entries()) {
       if (eventId.startsWith('__')) continue;
 
       // Exact match
-      if (cached.props[normalizedName] && cached.props[normalizedName].line > 0) {
+      if (cached.props[normalizedName]?.line > 0) {
         return cached.props[normalizedName];
       }
 
-      // Last name match
+      // Last name fallback
       const lastName = normalizedName.split(' ').pop() || '';
-      if (lastName.length < 3) continue;
+      if (lastName.length < 4) continue;
 
       for (const [key, val] of Object.entries(cached.props)) {
         if (val.line <= 0) continue;
-        if (key === normalizedName) return val;
         const cacheLastName = key.split(' ').pop() || '';
-        if (cacheLastName === lastName && cacheLastName.length >= 3) return val;
+        if (cacheLastName === lastName) return val;
       }
     }
 
