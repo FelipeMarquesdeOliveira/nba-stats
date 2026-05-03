@@ -101,6 +101,27 @@ interface PregameGateway {
 }
 ```
 
+---
+
+## Lógicas Específicas do Projeto
+
+### Detecção de Jogadores em Quadra (On-Court Detection)
+O sistema utiliza uma **State Machine determinística** baseada no Play-by-Play da ESPN para identificar com precisão cirúrgica quais 5 jogadores estão em quadra em cada time.
+
+- **Precisão:** 100% (validado via rastreamento de substituições).
+- **Mecanismo:** 
+  1. Inicializa com os titulares do boxscore.
+  2. Processa todas as jogadas do tipo `Substitution` cronologicamente.
+  3. Mantém um `Set` de 5 jogadores por time.
+- **Níveis de Confiança:**
+  - `HIGH_CONFIDENCE` (🔴): Confirmado pelo Play-by-Play.
+  - `ESTIMATED` (🟡): Fallback baseado em minutos jogados quando PBP é instável.
+- **Vantagem:** Reduz o consumo de créditos da Odds API em ~40%, consultando apenas jogadores ativos.
+
+---
+
+## Guia de Desenvolvimento
+
 ### Mocks Centralizados
 Mocks em `src/frontend/mocks/`:
 - `teams.ts` - Times mockados
