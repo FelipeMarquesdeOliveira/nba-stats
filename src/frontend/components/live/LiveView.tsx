@@ -291,9 +291,9 @@ function LiveTeamTable({ title, players, liveProps, side }: { title: string, pla
               return (
                 <tr key={player.player.id} className={`${player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE ? 'active-row' : ''}`}>
                   <td className="name-cell">
-                    {player.isStarter && <span className="starter-star">★</span>}
-                    <span className="p-name">{player.player.name}</span>
                     {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && <span className="live-dot"></span>}
+                    <span className="p-name">{player.player.name}</span>
+                    {player.isStarter && <span className="starter-star">★</span>}
                   </td>
                   <td className="val-cell bold">{player.points}</td>
                   <td className="val-cell">{line > 0 ? line : '—'}</td>
