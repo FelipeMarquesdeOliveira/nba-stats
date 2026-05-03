@@ -295,9 +295,9 @@ function LiveTeamTable({ title, players, liveProps, side }: { title: string, pla
               
               let statusClass = '';
               if (remaining !== null) {
-                if (remaining <= 0) statusClass = 'hit';
-                else if (remaining <= 3.5) statusClass = 'near';
-                else if (remaining <= 7.5) statusClass = 'mid';
+                if (remaining <= 3) statusClass = 'hit'; // 2, 3 points remaining is now green
+                else if (remaining <= 4.5) statusClass = 'near';
+                else if (remaining <= 8.5) statusClass = 'mid';
                 else statusClass = 'far';
               }
 
