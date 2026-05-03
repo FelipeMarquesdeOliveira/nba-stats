@@ -22,7 +22,7 @@ const ODDS_API_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_nba';
 // Cache durations
 const CACHE_PRE_GAME_EARLY = 6 * 60 * 60 * 1000;  // 6 horas — de manhã até perto do jogo
 const CACHE_PRE_GAME_CLOSE = 60 * 60 * 1000;       // 1 hora — última hora antes do jogo
-const CACHE_LIVE = 90 * 1000;                        // 90 segundos — ao vivo
+const CACHE_LIVE = 60 * 1000;                        // 60 segundos — ao vivo (~150 créditos/jogo)
 const CACHE_EVENTS = 2 * 60 * 60 * 1000;            // 2 horas — lista de eventos
 
 interface CachedProps {

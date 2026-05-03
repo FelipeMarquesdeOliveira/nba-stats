@@ -24,10 +24,10 @@ export const DATA_COLLECTION_CONFIG = {
     },
   },
 
-  // Polling intervals (conservative)
+  // Polling intervals
   polling: {
-    scoreboardLiveMs: 25000,      // 25 seconds
-    boxscoreLiveMs: 20000,        // 20 seconds
+    scoreboardLiveMs: 15000,      // 15 seconds — scoreboard
+    boxscoreLiveMs: 10000,        // 10 seconds — boxscore/PBP (substitutions)
     injuriesMs: 600000,           // 10 minutes
   },
 
