@@ -178,6 +178,8 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let ignore = false;
+    
     async function loadData() {
       setLoading(true);
       try {
@@ -186,6 +188,8 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
 
         // Try current game starters first
         const currentStarters = await getGameStarters(gameId);
+        if (ignore) return;
+        
         awayStarters = currentStarters.find(s => s.teamId === awayTeam.id)?.players || [];
         homeStarters = currentStarters.find(s => s.teamId === homeTeam.id)?.players || [];
 
@@ -197,7 +201,15 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
           homeStarters = await getTeamLastGameStarters(homeTeam.id);
         }
         
-        const awayData = await Promise.all(awayStarters.map(async p => {
+        if (ignore) return;
+
+        const posOrder: Record<string, number> = { 
+          'PG': 1, 'G': 2, 'SG': 3, 
+          'SF': 4, 'F': 5, 'PF': 6, 
+          'C': 7 
+        };
+        
+        const awayData = (await Promise.all(awayStarters.map(async p => {
           try {
             return {
               player: p,
@@ -205,12 +217,15 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
               prop: await oddsGateway.getPlayerPointsLine(p.id, gameId, p.name)
             };
           } catch (e) {
-            console.error(`Error loading prop for ${p.name}:`, e);
             return { player: p, stats: null, prop: null };
           }
-        }));
+        }))).sort((a, b) => {
+          const orderA = posOrder[a.player.position || ''] || 99;
+          const orderB = posOrder[b.player.position || ''] || 99;
+          return orderA - orderB;
+        });
 
-        const homeData = await Promise.all(homeStarters.map(async p => {
+        const homeData = (await Promise.all(homeStarters.map(async p => {
           try {
             return {
               player: p,
@@ -218,19 +233,26 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
               prop: await oddsGateway.getPlayerPointsLine(p.id, gameId, p.name)
             };
           } catch (e) {
-            console.error(`Error loading prop for ${p.name}:`, e);
             return { player: p, stats: null, prop: null };
           }
-        }));
+        }))).sort((a, b) => {
+          const orderA = posOrder[a.player.position || ''] || 99;
+          const orderB = posOrder[b.player.position || ''] || 99;
+          return orderA - orderB;
+        });
 
-        setData({ away: awayData, home: homeData });
+        if (!ignore) {
+          setData({ away: awayData, home: homeData });
+        }
       } catch (e) {
         console.error('Error loading prop data:', e);
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     }
+    
     loadData();
+    return () => { ignore = true; };
   }, [gameId, homeTeam.id, awayTeam.id, refreshKey]);
 
   if (loading) return (

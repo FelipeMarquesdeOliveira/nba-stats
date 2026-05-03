@@ -74,14 +74,16 @@ export async function getGameStarters(gameId: string): Promise<{ teamId: string,
       const starters = athletes.filter(a => a.starter).map(a => ({
         id: a.athlete.id,
         name: a.athlete.displayName,
-        jersey: a.athlete.jersey
+        jersey: a.athlete.jersey,
+        position: a.athlete.position?.abbreviation || 'N/A'
       }));
       
       // If no starters marked, take top 5
       const finalPlayers = starters.length > 0 ? starters : athletes.slice(0, 5).map(a => ({
         id: a.athlete.id,
         name: a.athlete.displayName,
-        jersey: a.athlete.jersey
+        jersey: a.athlete.jersey,
+        position: a.athlete.position?.abbreviation || 'N/A'
       }));
 
       return {
@@ -119,7 +121,8 @@ export async function getTeamLastGameStarters(teamId: string): Promise<{ id: str
     return athletes.filter(a => a.starter).map(a => ({
       id: a.athlete.id,
       name: a.athlete.displayName,
-      jersey: a.athlete.jersey
+      jersey: a.athlete.jersey,
+      position: a.athlete.position?.abbreviation || 'N/A'
     }));
   } catch (error) {
     logger.error(DataSource.ESPN, 'getTeamLastGameStarters', teamId, error);
