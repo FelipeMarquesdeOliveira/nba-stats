@@ -1,6 +1,7 @@
 import { BoxScore, BoxScorePlayer, OnCourtStatus } from '@domain/types';
 import { DATA_COLLECTION_CONFIG } from '../../config';
 import { httpClient, DataSource, logger, HttpClientError } from '../../infrastructure';
+import { computeOnCourt, toOnCourtStatusMap } from '../../infrastructure/onCourtTracker';
 
 export async function fetchSummary(gameId: string): Promise<any> {
   const { baseUrl, summaryEndpoint } = DATA_COLLECTION_CONFIG.espn;
@@ -88,74 +89,6 @@ function parsePlayer(athleteItem: any, names: string[], teamAbbreviation: string
   };
 }
 
-/**
- * Lógica Clínica de Detecção de Jogadores em Quadra
- * Analisa as jogadas recentes (PBP) para identificar evidências diretas de presença.
- */
-function detectClinicalOnCourt(data: any, players: BoxScorePlayer[]): void {
-  const plays = data.plays || [];
-  if (plays.length === 0) return;
-
-  const onCourtIds = new Set<string>();
-  
-  // 1. Evidência Direta: Qualquer jogador em uma jogada recente (últimas 20 jogadas)
-  // que não seja uma substituição.
-  const recentPlays = plays.slice(-20);
-  recentPlays.forEach((play: any) => {
-    const type = play.type?.text?.toLowerCase() || '';
-    if (type.includes('substitution') || type.includes('enters') || type.includes('leaves')) return;
-
-    // Adiciona todos os participantes da jogada
-    if (play.participants) {
-      play.participants.forEach((p: any) => {
-        if (p.athlete?.id) onCourtIds.add(p.athlete.id);
-      });
-    }
-  });
-
-  // 2. Lógica de Substituição: Varre todas as jogadas para rastrear o estado atual
-  // (Iniciamos com os titulares se for o início do jogo, mas o PBP da ESPN é cumulativo)
-  plays.forEach((play: any) => {
-    const text = play.text?.toLowerCase() || '';
-    if (text.includes('enters the game for')) {
-      // Ex: "Cade Cunningham enters the game for Jaden Ivey"
-      // Precisamos extrair quem entrou e quem saiu. A ESPN costuma ter isso nos participants.
-      const enters = play.participants?.find((p: any) => text.includes(p.athlete?.displayName?.toLowerCase()) && text.indexOf(p.athlete?.displayName?.toLowerCase()) < text.indexOf('enters'));
-      const leaves = play.participants?.find((p: any) => text.includes(p.athlete?.displayName?.toLowerCase()) && text.indexOf(p.athlete?.displayName?.toLowerCase()) > text.indexOf('for'));
-      
-      if (enters?.athlete?.id) onCourtIds.add(enters.athlete.id);
-      if (leaves?.athlete?.id) onCourtIds.delete(leaves.athlete.id);
-    }
-  });
-
-  // 3. Aplica o status HIGH_CONFIDENCE baseado na evidência
-  players.forEach(p => {
-    if (onCourtIds.has(p.player.id)) {
-      p.isOnCourt = true;
-      p.onCourtStatus = OnCourtStatus.HIGH_CONFIDENCE;
-    }
-  });
-
-  // 4. Fallback ESTIMATED: Se um time tem < 5 jogadores detectados, 
-  // preenchemos com os top minutos que tenham jogado recentemente.
-  const teams = [...new Set(players.map(p => p.teamAbbreviation))];
-  teams.forEach(abbr => {
-    const teamPlayers = players.filter(p => p.teamAbbreviation === abbr);
-    const confirmedCount = teamPlayers.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE).length;
-    
-    if (confirmedCount < 5) {
-      const candidates = teamPlayers
-        .filter(p => p.onCourtStatus === OnCourtStatus.UNKNOWN && (parseInt(p.minutesPlayed) || 0) > 0)
-        .sort((a, b) => (parseInt(b.minutesPlayed) || 0) - (parseInt(a.minutesPlayed) || 0));
-      
-      for (let i = 0; i < (5 - confirmedCount) && i < candidates.length; i++) {
-        candidates[i].isOnCourt = true;
-        candidates[i].onCourtStatus = OnCourtStatus.ESTIMATED;
-      }
-    }
-  });
-}
-
 export function normalizeSummaryToBoxScore(data: any): BoxScore {
   const gameId = data.header.id;
   const competitors = data.header.competitions[0].competitors;
@@ -206,12 +139,26 @@ export function normalizeSummaryToBoxScore(data: any): BoxScore {
   homePlayers.forEach(p => p.efficiency = calcEff(p));
   awayPlayers.forEach(p => p.efficiency = calcEff(p));
 
+  // ─── ON-COURT DETECTION (State Machine — 100% precision) ──────
   const gameStatusText = data.header.competitions[0].status.type.state; // 'pre', 'in', 'post'
   const isLive = gameStatusText === 'in';
   
-  const allPlayers = [...homePlayers, ...awayPlayers];
   if (isLive) {
-    detectClinicalOnCourt(data, allPlayers);
+    const onCourtResult = computeOnCourt(data);
+    const statusMap = toOnCourtStatusMap(onCourtResult);
+    
+    // Log no console para diagnóstico em tempo real
+    console.log(`🏀 [ON-COURT] ${onCourtResult.diagnostics}`);
+    
+    // Aplicar o status a cada jogador
+    const allPlayers = [...homePlayers, ...awayPlayers];
+    for (const player of allPlayers) {
+      const status = statusMap.get(player.player.id);
+      if (status) {
+        player.isOnCourt = true;
+        player.onCourtStatus = status;
+      }
+    }
   }
 
   const calculateTeamStats = (players: BoxScorePlayer[]) => {
@@ -244,7 +191,7 @@ export function normalizeSummaryToBoxScore(data: any): BoxScore {
     awayScore,
     clock: data.header.competitions[0].status.displayClock || '',
     period: data.header.competitions[0].status.period || 1,
-    players: allPlayers,
+    players: [...homePlayers, ...awayPlayers],
     teamStats: {
       [homeAbbr]: calculateTeamStats(homePlayers),
       [awayAbbr]: calculateTeamStats(awayPlayers),

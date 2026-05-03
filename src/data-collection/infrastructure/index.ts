@@ -14,3 +14,6 @@ export type { CacheEntry, CacheConfig, CacheStats } from './Cache';
 
 export { HttpClient, httpClient, HttpClientError, HTTP_CLIENT_CONFIGS } from './HttpClient';
 export type { HttpClientConfig, RetryConfig } from './HttpClient';
+
+export { computeOnCourt, toOnCourtStatusMap } from './onCourtTracker';
+export type { OnCourtResult } from './onCourtTracker';
