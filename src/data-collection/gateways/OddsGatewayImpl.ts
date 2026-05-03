@@ -112,12 +112,12 @@ export class OddsGatewayImpl implements OddsGateway {
         if (!market) continue;
 
         for (const outcome of market.outcomes) {
-          const playerKey = outcome.name.toLowerCase();
-          if (outcome.description === 'Over') {
+          const playerKey = outcome.description.toLowerCase();
+          if (outcome.name === 'Over') {
             if (!props[playerKey]) {
               props[playerKey] = { line: outcome.point, over: outcome.price, under: 0 };
             }
-          } else if (outcome.description === 'Under') {
+          } else if (outcome.name === 'Under') {
             if (props[playerKey]) {
               props[playerKey].under = outcome.price;
             } else {
