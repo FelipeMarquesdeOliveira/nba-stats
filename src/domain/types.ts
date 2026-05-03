@@ -42,6 +42,7 @@ export enum OnCourtStatus {
   HIGH_CONFIDENCE = 'confirmed', // renamed internally for clarity
   ESTIMATED = 'estimated',
   UNKNOWN = 'unknown',
+  DNP = 'dnp',
 }
 
 export enum AvailabilityLevel {

@@ -161,6 +161,17 @@ export function normalizeSummaryToBoxScore(data: any): BoxScore {
     }
   }
 
+  // DNP Detection (works for both live and finished games)
+  const allPlayers = [...homePlayers, ...awayPlayers];
+  for (const player of allPlayers) {
+    if (player.onCourtStatus === OnCourtStatus.UNKNOWN) {
+      const hasPlayed = player.minutesPlayed && player.minutesPlayed !== '0' && player.minutesPlayed !== '0:00';
+      if (!hasPlayed) {
+        player.onCourtStatus = OnCourtStatus.DNP;
+      }
+    }
+  }
+
   const calculateTeamStats = (players: BoxScorePlayer[]) => {
     return players.reduce((acc, p) => {
       acc.FGM += p.fieldGoalsMade;

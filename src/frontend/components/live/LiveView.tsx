@@ -186,6 +186,10 @@ function LiveView({ game }: LiveViewProps) {
 
   const sortPlayers = (players: BoxScorePlayer[]) => {
     return [...players].sort((a, b) => {
+      // DNP should always be at the bottom
+      if (a.onCourtStatus === OnCourtStatus.DNP && b.onCourtStatus !== OnCourtStatus.DNP) return 1;
+      if (b.onCourtStatus === OnCourtStatus.DNP && a.onCourtStatus !== OnCourtStatus.DNP) return -1;
+      
       if (a.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && b.onCourtStatus !== OnCourtStatus.HIGH_CONFIDENCE) return -1;
       if (b.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && a.onCourtStatus !== OnCourtStatus.HIGH_CONFIDENCE) return 1;
       if (a.isStarter && !b.isStarter) return -1;
@@ -325,7 +329,9 @@ function LiveTeamTable({ title, players, liveProps, side }: { title: string, pla
                   <td className="val-cell dim">{player.minutesPlayed}</td>
                   <td className="status-cell">
                     <span className={`status-pill ${player.onCourtStatus}`}>
-                      {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE ? 'QUADRA' : (player.onCourtStatus === OnCourtStatus.ESTIMATED ? 'ESTIMADO' : 'BANCO')}
+                      {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE ? 'QUADRA' : 
+                       (player.onCourtStatus === OnCourtStatus.ESTIMATED ? 'ESTIMADO' : 
+                       (player.onCourtStatus === OnCourtStatus.DNP ? 'DNP' : 'BANCO'))}
                     </span>
                   </td>
                 </tr>
