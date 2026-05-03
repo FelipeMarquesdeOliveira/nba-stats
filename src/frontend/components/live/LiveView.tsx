@@ -107,7 +107,20 @@ function LiveView({ game }: LiveViewProps) {
     let ignore = false;
 
     async function fetchOnCourtProps() {
-      const allPlayers = [...boxscore!.homeTeam.players, ...boxscore!.awayTeam.players];
+      if (!boxscore) return;
+
+      // Pause polling during Halftime to save credits
+      const isHalftime = boxscore.clock?.toLowerCase().includes('half') || 
+                         boxscore.clock?.toLowerCase().includes('ht');
+      
+      if (isHalftime) {
+        if (Object.keys(liveProps).length > 0) {
+          console.log('⏸️ [ODDS] Halftime — Polling pausado para economizar créditos');
+        }
+        return;
+      }
+
+      const allPlayers = [...boxscore.homeTeam.players, ...boxscore.awayTeam.players];
       
       const confirmedOnCourt = allPlayers.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE);
       const estimatedOnCourt = allPlayers.filter(p => p.onCourtStatus === OnCourtStatus.ESTIMATED);
