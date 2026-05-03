@@ -188,14 +188,24 @@ export class OddsGatewayImpl implements OddsGateway {
   }
 
   private async fetchPlayerProps(oddsEventId: string): Promise<CachedProps> {
-    const url = `${ODDS_API_BASE}/events/${oddsEventId}/odds?regions=eu&markets=player_points&oddsFormat=decimal`;
+    const url = `${ODDS_API_BASE}/events/${oddsEventId}/odds?regions=us&markets=player_points&oddsFormat=decimal`;
     const res = await this.fetchWithRetry(url);
     if (!res) return {};
 
     const data = await res.json();
     const props: CachedProps = {};
 
-    for (const bookmaker of (data.bookmakers || [])) {
+    const priorityBookmakers = ['draftkings', 'fanduel', 'pinnacle', 'betmgm', 'caesars', 'bovada'];
+    const sortedBookmakers = (data.bookmakers || []).sort((a: any, b: any) => {
+      const idxA = priorityBookmakers.indexOf(a.key);
+      const idxB = priorityBookmakers.indexOf(b.key);
+      if (idxA === -1 && idxB === -1) return 0;
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    });
+
+    for (const bookmaker of sortedBookmakers) {
       const market = bookmaker.markets?.find((m: any) => m.key === 'player_points');
       if (!market) continue;
 

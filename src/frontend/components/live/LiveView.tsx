@@ -17,7 +17,11 @@ interface LiveNotification {
 
 let notificationId = 0;
 
-// ─── Helpers ────────────────────────────────────────────────────
+// ─── Main Component ─────────────────────────────────────────────
+
+interface LiveViewProps {
+  game: Game;
+}
 
 function formatTimeAgo(date: Date | null): string {
   if (!date) return '';
@@ -28,12 +32,6 @@ function formatTimeAgo(date: Date | null): string {
   return `há ${minutes}min`;
 }
 
-// ─── Main Component ─────────────────────────────────────────────
-
-interface LiveViewProps {
-  game: Game;
-}
-
 function LiveView({ game }: LiveViewProps) {
   const gameStatus: 'live' | 'final' | 'scheduled' =
     game.status === GameStatus.LIVE ? 'live' :
@@ -41,37 +39,59 @@ function LiveView({ game }: LiveViewProps) {
 
   const { boxscore, loading, error, refetch, isStale, lastUpdated, circuitOpen, isManualRefreshing } = useLiveGame(game.id, gameStatus);
   
+  // Live props state
   const [liveProps, setLiveProps] = useState<Record<string, { line: number; over: number; under: number }>>({});
   const prevPropsRef = useRef<Record<string, number>>({});
   const prevOnCourtRef = useRef<Record<string, OnCourtStatus>>({});
   const [notifications, setNotifications] = useState<LiveNotification[]>([]);
 
-  // ─── Auto Live Mode ──────────────────────────────────────────
+  // ─── Auto Live Mode Activation ──────────────────────────────
   useEffect(() => {
     const isLive = game.status === GameStatus.LIVE;
     (oddsGateway as OddsGatewayImpl).setLiveMode(isLive);
-    return () => { (oddsGateway as OddsGatewayImpl).setLiveMode(false); };
+    
+    return () => {
+      (oddsGateway as OddsGatewayImpl).setLiveMode(false);
+    };
   }, [game.status]);
 
   // ─── Track Substitutions ────────────────────────────────────
   useEffect(() => {
     if (!boxscore) return;
+
     const allPlayers = [...boxscore.homeTeam.players, ...boxscore.awayTeam.players];
     const newNotifications: LiveNotification[] = [];
     const currentOnCourt = { ...prevOnCourtRef.current };
 
     for (const player of allPlayers) {
-      const prev = currentOnCourt[player.player.id];
-      const curr = player.onCourtStatus;
-      if (prev !== undefined && prev !== curr) {
-        if (curr === OnCourtStatus.HIGH_CONFIDENCE) {
-          newNotifications.push({ id: ++notificationId, type: 'substitution', playerName: player.player.name, message: 'Entrou em quadra', direction: 'in', timestamp: Date.now() });
-        } else if (prev === OnCourtStatus.HIGH_CONFIDENCE && curr === OnCourtStatus.UNKNOWN) {
-          newNotifications.push({ id: ++notificationId, type: 'substitution', playerName: player.player.name, message: 'Saiu para o banco', direction: 'out', timestamp: Date.now() });
+      const prevStatus = currentOnCourt[player.player.id];
+      const newStatus = player.onCourtStatus;
+
+      if (prevStatus !== undefined && prevStatus !== newStatus) {
+        // Mudança de status detectada
+        if (newStatus === OnCourtStatus.HIGH_CONFIDENCE) {
+          newNotifications.push({
+            id: ++notificationId,
+            type: 'substitution',
+            playerName: player.player.name,
+            message: 'ENTROU em quadra 🔴',
+            direction: 'in',
+            timestamp: Date.now()
+          });
+        } else if (prevStatus === OnCourtStatus.HIGH_CONFIDENCE && newStatus === OnCourtStatus.UNKNOWN) {
+          newNotifications.push({
+            id: ++notificationId,
+            type: 'substitution',
+            playerName: player.player.name,
+            message: 'SAIU para o banco',
+            direction: 'out',
+            timestamp: Date.now()
+          });
         }
       }
-      currentOnCourt[player.player.id] = curr;
+      currentOnCourt[player.player.id] = newStatus;
     }
+
     prevOnCourtRef.current = currentOnCourt;
     if (newNotifications.length > 0) {
       setNotifications(prev => [...newNotifications, ...prev].slice(0, 10));
@@ -81,17 +101,21 @@ function LiveView({ game }: LiveViewProps) {
   // ─── Fetch Props ───────────────────────────────────────────
   useEffect(() => {
     if (!boxscore || game.status !== GameStatus.LIVE) return;
+
     let ignore = false;
 
     async function fetchOnCourtProps() {
       const allPlayers = [...boxscore!.homeTeam.players, ...boxscore!.awayTeam.players];
-      const confirmed = allPlayers.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE);
-      const estimated = allPlayers.filter(p => p.onCourtStatus === OnCourtStatus.ESTIMATED);
-      const playersToFetch = confirmed.length > 0
-        ? [...confirmed, ...estimated].slice(0, 14)
+      
+      const confirmedOnCourt = allPlayers.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE);
+      const estimatedOnCourt = allPlayers.filter(p => p.onCourtStatus === OnCourtStatus.ESTIMATED);
+      
+      let playersToFetch = confirmedOnCourt.length > 0 
+        ? [...confirmedOnCourt, ...estimatedOnCourt].slice(0, 14)
         : allPlayers.filter(p => p.isStarter);
 
       const newProps: Record<string, { line: number; over: number; under: number }> = {};
+      
       for (const player of playersToFetch) {
         if (ignore) return;
         try {
@@ -101,22 +125,37 @@ function LiveView({ game }: LiveViewProps) {
           }
         } catch (_) {}
       }
+
       if (ignore) return;
 
-      // Detect line changes
+      // Detect Line Changes
       const prevLines = prevPropsRef.current;
-      const lineNotifs: LiveNotification[] = [];
-      for (const [pid, data] of Object.entries(newProps)) {
-        const prev = prevLines[pid];
-        if (prev !== undefined && prev !== data.line) {
-          const p = allPlayers.find(x => x.player.id === pid);
-          lineNotifs.push({ id: ++notificationId, type: 'line', playerName: p?.player.name || pid, message: `${prev} → ${data.line}`, direction: data.line > prev ? 'up' : 'down', timestamp: Date.now() });
+      const lineNotifications: LiveNotification[] = [];
+
+      for (const [playerId, propData] of Object.entries(newProps)) {
+        const prevLine = prevLines[playerId];
+        if (prevLine !== undefined && prevLine !== propData.line) {
+          const player = allPlayers.find(p => p.player.id === playerId);
+          lineNotifications.push({
+            id: ++notificationId,
+            type: 'line',
+            playerName: player?.player.name || playerId,
+            message: `Linha: ${prevLine} → ${propData.line}`,
+            direction: propData.line > prevLine ? 'up' : 'down',
+            timestamp: Date.now()
+          });
         }
-        prevLines[pid] = data.line;
+        prevLines[playerId] = propData.line;
       }
+
       prevPropsRef.current = prevLines;
+      
+      // Update props (merge with old to avoid disappearing lines if fetch fails for some)
       setLiveProps(prev => ({ ...prev, ...newProps }));
-      if (lineNotifs.length > 0) setNotifications(prev => [...lineNotifs, ...prev].slice(0, 10));
+
+      if (lineNotifications.length > 0) {
+        setNotifications(prev => [...lineNotifications, ...prev].slice(0, 10));
+      }
     }
 
     fetchOnCourtProps();
@@ -124,26 +163,16 @@ function LiveView({ game }: LiveViewProps) {
     return () => { ignore = true; clearInterval(interval); };
   }, [boxscore, game.status, game.id]);
 
-  // Auto-dismiss
   useEffect(() => {
     if (notifications.length === 0) return;
-    const timer = setTimeout(() => setNotifications(prev => prev.filter(n => Date.now() - n.timestamp < 6000)), 6000);
+    const timer = setTimeout(() => {
+      setNotifications(prev => prev.filter(n => Date.now() - n.timestamp < 6000));
+    }, 6000);
     return () => clearTimeout(timer);
   }, [notifications]);
 
-  // ─── Render states ───────────────────────────────────────────
-  if (loading) {
-    return <div className="live-view animate-fadeIn"><div className="loading-state"><div className="loading-spinner">⏳</div><p>Carregando dados ao vivo...</p></div></div>;
-  }
-  if (circuitOpen) {
-    return <div className="live-view animate-fadeIn"><div className="circuit-open-state"><span className="circuit-icon">🔌</span><p className="circuit-title">Serviço temporariamente indisponível</p><button onClick={() => refetch({ manual: true })} className="retry-button">Tentar novamente</button></div></div>;
-  }
-  if (error) {
-    return <div className="live-view animate-fadeIn"><div className="error-state"><p className="error-title">Erro ao carregar dados</p><p className="error-message">{error}</p><button onClick={() => refetch({ manual: true })} className="retry-button">Tentar novamente</button></div></div>;
-  }
-  if (!boxscore) {
-    return <div className="live-view animate-fadeIn"><div className="no-data-message"><p>Dados não disponíveis para este jogo.</p></div></div>;
-  }
+  if (loading) return <div className="live-view loading">Carregando...</div>;
+  if (!boxscore) return <div className="live-view no-data">Sem dados.</div>;
 
   const sortPlayers = (players: BoxScorePlayer[]) => {
     return [...players].sort((a, b) => {
@@ -157,131 +186,134 @@ function LiveView({ game }: LiveViewProps) {
 
   const homePlayers = sortPlayers(boxscore.homeTeam.players);
   const awayPlayers = sortPlayers(boxscore.awayTeam.players);
-  const margin = boxscore.homeScore - boxscore.awayScore;
 
   return (
-    <div className="live-view animate-fadeIn">
-      {/* Toast Notifications */}
+    <div className="live-container animate-fadeIn">
+      {/* Notifications Toast */}
       <div className="toast-area">
         {notifications.map(n => (
-          <div key={n.id} className={`toast toast-${n.type} toast-${n.direction}`}>
-            <span className="toast-icon">{n.type === 'line' ? (n.direction === 'up' ? '📈' : '📉') : (n.direction === 'in' ? '➡️' : '⬅️')}</span>
-            <div className="toast-body">
-              <span className="toast-name">{n.playerName}</span>
-              <span className="toast-detail">{n.message}</span>
+          <div key={n.id} className={`toast ${n.type} ${n.direction}`}>
+            <div className="toast-icon">
+              {n.type === 'line' ? (n.direction === 'up' ? '📈' : '📉') : (n.direction === 'in' ? '🔴' : '🪑')}
+            </div>
+            <div className="toast-content">
+              <div className="toast-player">{n.playerName}</div>
+              <div className="toast-msg">{n.message}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Scoreboard — same structure as FinalView */}
-      <div className="live-scoreboard">
-        <div className="live-team away">
-          <span className="team-abbr">{game.awayTeam.abbreviation}</span>
-          <span className="team-score">{boxscore.awayScore}</span>
-          <span className="team-name">{game.awayTeam.name}</span>
-        </div>
-
-        <div className="live-center">
-          <div className="live-badge">
-            <span className="live-dot-green"></span>AO VIVO
+      {/* Header Alinhado com o Estilo Premium */}
+      <div className="live-header-card glass">
+        <div className="live-status-row">
+          <div className="live-badge-pulse">AO VIVO</div>
+          <div className="live-clock">{boxscore.period}Q • {boxscore.clock}</div>
+          <div className="clinical-indicator">
+            <span className="dot pulse"></span> CLINICAL ACTIVE
           </div>
-          <div className="live-clock">{boxscore.period}Q{boxscore.clock && ` · ${boxscore.clock}`}</div>
-          {margin !== 0 && (
-            <div className="lead-margin">{margin > 0 ? game.homeTeam.abbreviation : game.awayTeam.abbreviation} +{Math.abs(margin)}</div>
-          )}
         </div>
 
-        <div className="live-team home">
-          <span className="team-abbr">{game.homeTeam.abbreviation}</span>
-          <span className="team-score">{boxscore.homeScore}</span>
-          <span className="team-name">{game.homeTeam.name}</span>
+        <div className="score-main-row">
+          <div className="team-score-block">
+            <span className="team-abbr">{game.awayTeam.abbreviation}</span>
+            <span className="score-value">{boxscore.awayScore}</span>
+          </div>
+          <div className="score-divider">VS</div>
+          <div className="team-score-block">
+            <span className="score-value">{boxscore.homeScore}</span>
+            <span className="team-abbr">{game.homeTeam.abbreviation}</span>
+          </div>
         </div>
-      </div>
 
-      {boxscore.lastPlay && (
-        <div className="last-play-strip">
-          <span className="last-play-label">ÚLTIMA JOGADA</span>
-          <span className="last-play-text">{boxscore.lastPlay}</span>
-        </div>
-      )}
-
-      {/* Box Score Tables */}
-      <div className="boxscore-section">
-        <h3>Live Stats</h3>
-        <div className="boxscore-grid">
-          <LiveTeamTable teamName={game.awayTeam.shortName} players={awayPlayers} liveProps={liveProps} />
-          <LiveTeamTable teamName={game.homeTeam.shortName} players={homePlayers} liveProps={liveProps} />
+        <div className="last-play-box">
+          <span className="last-play-label">LATEST:</span>
+          <span className="last-play-text">{boxscore.lastPlay || 'Aguardando jogada...'}</span>
         </div>
       </div>
 
-      <div className="data-source-note">
-        <p>Detecção clínica via Play-by-Play ESPN · Linhas via The Odds API</p>
+      <div className="live-grid">
+        <LiveTeamTable 
+          title={game.awayTeam.name} 
+          players={awayPlayers} 
+          liveProps={liveProps}
+          side="away"
+        />
+        <LiveTeamTable 
+          title={game.homeTeam.name} 
+          players={homePlayers} 
+          liveProps={liveProps}
+          side="home"
+        />
       </div>
     </div>
   );
 }
 
-// ─── Team Table ────────────────────────────────────────────────
+// ─── Improved Team Table ───────────────────────────────────────
 
-function LiveTeamTable({ teamName, players, liveProps }: { teamName: string; players: BoxScorePlayer[]; liveProps: Record<string, { line: number; over: number; under: number }> }) {
+function LiveTeamTable({ title, players, liveProps, side }: { title: string, players: BoxScorePlayer[], liveProps: any, side: string }) {
   const onCourtCount = players.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE).length;
 
   return (
-    <div className="boxscore-team">
-      <div className="team-header-row">
-        <h4>{teamName}</h4>
-        {onCourtCount > 0 && (
-          <span className="oncourt-count">{onCourtCount} em quadra</span>
-        )}
+    <div className={`team-card glass ${side}`}>
+      <div className="team-card-header">
+        <h3>{title}</h3>
+        <div className="on-court-summary">
+          <span className="count">{onCourtCount}</span> EM QUADRA <span className="live-dot" style={{display: 'inline-block', marginLeft: '4px'}}></span>
+        </div>
       </div>
-      <table className="boxscore-table">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>PTS</th>
-            <th>Linha</th>
-            <th>Faltam</th>
-            <th>REB</th>
-            <th>AST</th>
-            <th>MIN</th>
-          </tr>
-        </thead>
-        <tbody>
-          {players.map(player => {
-            const prop = liveProps[player.player.id];
-            const line = prop?.line || 0;
-            const remaining = line > 0 ? line - player.points : null;
-            const isOnCourt = player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE;
+      
+      <div className="table-responsive">
+        <table className="modern-table">
+          <thead>
+            <tr>
+              <th>PLAYER</th>
+              <th>PTS</th>
+              <th>LINHA</th>
+              <th>FALTAM</th>
+              <th>MIN</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players.map(player => {
+              const prop = liveProps[player.player.id];
+              const line = prop?.line || 0;
+              const remaining = line > 0 ? line - player.points : null;
+              
+              let statusClass = '';
+              if (remaining !== null) {
+                if (remaining <= 0) statusClass = 'hit';
+                else if (remaining <= 3.5) statusClass = 'near';
+                else if (remaining <= 7.5) statusClass = 'mid';
+                else statusClass = 'far';
+              }
 
-            let remainingClass = '';
-            if (remaining !== null) {
-              if (remaining <= 0) remainingClass = 'remaining-hit';
-              else if (remaining <= 3.5) remainingClass = 'remaining-near';
-              else if (remaining <= 7.5) remainingClass = 'remaining-mid';
-              else remainingClass = 'remaining-far';
-            }
-
-            return (
-              <tr key={player.player.id} className={isOnCourt ? 'row-oncourt' : ''}>
-                <td className="player-cell">
-                  <span className="player-name">{player.player.name}</span>
-                  {player.isStarter && <span className="player-pos">★</span>}
-                  {isOnCourt && <span className="oncourt-dot"></span>}
-                </td>
-                <td className="pts-cell">{player.points}</td>
-                <td>{line > 0 ? line : '—'}</td>
-                <td className={remainingClass}>
-                  {remaining !== null ? (remaining <= 0 ? '✅' : Math.ceil(remaining)) : '—'}
-                </td>
-                <td>{player.rebounds}</td>
-                <td>{player.assists}</td>
-                <td className="min-cell">{player.minutesPlayed}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              return (
+                <tr key={player.player.id} className={`${player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE ? 'active-row' : ''}`}>
+                  <td className="name-cell">
+                    {player.isStarter && <span className="starter-star">★</span>}
+                    <span className="p-name">{player.player.name}</span>
+                    {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && <span className="live-dot"></span>}
+                  </td>
+                  <td className="val-cell bold">{player.points}</td>
+                  <td className="val-cell">{line > 0 ? line : '—'}</td>
+                  <td className={`val-cell remaining ${statusClass}`}>
+                    {remaining !== null ? (remaining <= 0 ? '✅' : Math.ceil(remaining)) : '—'}
+                  </td>
+                  <td className="val-cell dim">{player.minutesPlayed}</td>
+                  <td className="status-cell">
+                    <span className={`status-pill ${player.onCourtStatus}`}>
+                      {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE ? 'QUADRA' : (player.onCourtStatus === OnCourtStatus.ESTIMATED ? 'ESTIMADO' : 'BANCO')}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
