@@ -226,10 +226,6 @@ function LiveView({ game }: LiveViewProps) {
           </div>
         </div>
 
-        <div className="last-play-box">
-          <span className="last-play-label">LATEST:</span>
-          <span className="last-play-text">{boxscore.lastPlay || 'Aguardando jogada...'}</span>
-        </div>
       </div>
 
       <div className="live-grid">
