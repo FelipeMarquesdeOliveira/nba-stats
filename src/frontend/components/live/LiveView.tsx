@@ -161,7 +161,7 @@ function LiveView({ game }: LiveViewProps) {
     }
 
     fetchOnCourtProps();
-    const interval = setInterval(fetchOnCourtProps, 60 * 1000); // 60s — synced with CACHE_LIVE
+    const interval = setInterval(fetchOnCourtProps, 30 * 1000); // 30s — synced with CACHE_LIVE
     return () => { ignore = true; clearInterval(interval); };
   }, [boxscore, game.status, game.id]);
 
