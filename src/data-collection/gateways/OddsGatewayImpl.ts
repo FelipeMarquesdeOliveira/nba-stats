@@ -279,8 +279,15 @@ export class OddsGatewayImpl implements OddsGateway {
         playerId: playerId.toString(),
         line: match.line,
         overOdds: match.over,
-        underOdds: match.under
+        underOdds: match.under,
+        playerName: normalizedName,
+        bookmaker: 'The Odds API',
+        updatedAt: new Date()
       };
+    }
+
+    if (this._isLive) {
+      console.log(`🔎 [ODDS] Nenhuma linha encontrada para: ${normalizedName}`);
     }
 
     return null;
@@ -293,18 +300,20 @@ export class OddsGatewayImpl implements OddsGateway {
     for (const [eventId, cached] of this.eventPropsCache.entries()) {
       if (eventId.startsWith('__')) continue;
 
-      // Exact match
-      if (cached.props[normalizedName]?.line > 0) {
-        return cached.props[normalizedName];
+      // 1. Exact match (normalized)
+      for (const [key, val] of Object.entries(cached.props)) {
+        if (key === normalizedName && val.line > 0) return val;
       }
 
-      // Last name fallback
-      const lastName = normalizedName.split(' ').pop() || '';
-      if (lastName.length < 4) continue;
+      // 2. Last name fallback (handle variations like "Stephen" vs "Steph")
+      const parts = normalizedName.split(' ');
+      const lastName = parts[parts.length - 1];
+      if (lastName.length < 3) continue;
 
       for (const [key, val] of Object.entries(cached.props)) {
         if (val.line <= 0) continue;
-        const cacheLastName = key.split(' ').pop() || '';
+        const cacheParts = key.split(' ');
+        const cacheLastName = cacheParts[cacheParts.length - 1];
         if (cacheLastName === lastName) return val;
       }
     }
