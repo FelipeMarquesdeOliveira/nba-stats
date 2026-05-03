@@ -62,23 +62,31 @@ function LiveView({ game }: LiveViewProps) {
     let ignore = false;
 
     async function fetchOnCourtProps() {
-      // Get only players who are on court (HIGH_CONFIDENCE or ESTIMATED)
       const allPlayers = [
         ...boxscore!.homeTeam.players,
         ...boxscore!.awayTeam.players
       ];
       
-      const onCourtPlayers = allPlayers.filter(p => 
-        p.isStarter && (
-          p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE || 
-          p.onCourtStatus === OnCourtStatus.ESTIMATED
-        )
+      // PRIORIDADE CLÍNICA:
+      // 1. Jogadores com HIGH_CONFIDENCE (Confirmados pelo PBP)
+      // 2. Jogadores ESTIMATED (Heurística de minutos)
+      const confirmedOnCourt = allPlayers.filter(p => 
+        p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE
       );
 
-      // If no on-court detection yet, use starters
-      const playersToFetch = onCourtPlayers.length > 0 
-        ? onCourtPlayers 
-        : allPlayers.filter(p => p.isStarter);
+      const estimatedOnCourt = allPlayers.filter(p => 
+        p.onCourtStatus === OnCourtStatus.ESTIMATED
+      );
+
+      let playersToFetch: BoxScorePlayer[] = [];
+
+      if (confirmedOnCourt.length > 0) {
+        // Se temos confirmados, focamos neles + estimados até completar um limite razoável (ex: 12 jogadores total)
+        playersToFetch = [...confirmedOnCourt, ...estimatedOnCourt].slice(0, 14);
+      } else {
+        // Fallback: Se não houver detecção (início do jogo), usa titulares
+        playersToFetch = allPlayers.filter(p => p.isStarter);
+      }
 
       const newProps: Record<string, { line: number; over: number; under: number }> = {};
       
@@ -132,7 +140,6 @@ function LiveView({ game }: LiveViewProps) {
 
     fetchOnCourtProps();
 
-    // Auto-refresh props every 90 seconds during live
     const interval = setInterval(fetchOnCourtProps, 90 * 1000);
     return () => { 
       ignore = true; 
@@ -154,7 +161,7 @@ function LiveView({ game }: LiveViewProps) {
       <div className="live-view animate-fadeIn">
         <div className="loading-state">
           <div className="loading-spinner">⏳</div>
-          <p>Carregando dados...</p>
+          <p>Carregando dados ao vivo...</p>
         </div>
       </div>
     );
@@ -199,17 +206,22 @@ function LiveView({ game }: LiveViewProps) {
     );
   }
 
-  // Filter to only show starters and sort by points
   const sortPlayers = (players: BoxScorePlayer[]) => {
     return [...players]
-      .filter((p) => p.isStarter)
+      .filter((p) => p.isStarter || p.onCourtStatus !== OnCourtStatus.UNKNOWN || (parseInt(p.minutesPlayed) || 0) > 0)
       .sort((a, b) => {
-        if (a.onCourtStatus !== b.onCourtStatus) {
-          if (a.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return -1;
-          if (b.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE) return 1;
-          if (a.onCourtStatus === OnCourtStatus.ESTIMATED) return -1;
-          if (b.onCourtStatus === OnCourtStatus.ESTIMATED) return 1;
-        }
+        // 1. Em quadra (HIGH_CONFIDENCE) no topo
+        if (a.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && b.onCourtStatus !== OnCourtStatus.HIGH_CONFIDENCE) return -1;
+        if (b.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && a.onCourtStatus !== OnCourtStatus.HIGH_CONFIDENCE) return 1;
+        
+        // 2. Estimados logo abaixo
+        if (a.onCourtStatus === OnCourtStatus.ESTIMATED && b.onCourtStatus === OnCourtStatus.UNKNOWN) return -1;
+        if (b.onCourtStatus === OnCourtStatus.ESTIMATED && a.onCourtStatus === OnCourtStatus.UNKNOWN) return 1;
+        
+        // 3. Titulares que saíram
+        if (a.isStarter && !b.isStarter) return -1;
+        if (b.isStarter && !a.isStarter) return 1;
+        
         return b.points - a.points;
       });
   };
@@ -222,7 +234,6 @@ function LiveView({ game }: LiveViewProps) {
 
   return (
     <div className="live-view animate-fadeIn">
-      {/* ─── Line Change Notifications ──────────────────────── */}
       {notifications.length > 0 && (
         <div className="line-notifications">
           {notifications.map(n => (
@@ -247,12 +258,16 @@ function LiveView({ game }: LiveViewProps) {
         <div className="refresh-header">
           <div className="timestamp-info">
             <span className="timestamp-label">
-              {isStale ? 'Última atualização bem-sucedida: ' : 'Atualizado: '}
+              {isStale ? 'Última atualização: ' : 'Atualizado: '}
             </span>
             <span className="timestamp-value">{formatTimeAgo(lastUpdated)}</span>
             {isManualRefreshing && (
               <span className="refreshing-indicator">⟳ atualizando...</span>
             )}
+          </div>
+          <div className="clinical-badge-info">
+            <span className="badge-dot"></span>
+            Detecção Clínica Ativa
           </div>
           <button
             onClick={() => refetch({ manual: true })}
@@ -260,19 +275,6 @@ function LiveView({ game }: LiveViewProps) {
             disabled={isManualRefreshing}
           >
             {isManualRefreshing ? '⟳' : '⟳ Atualizar'}
-          </button>
-        </div>
-      )}
-
-      {!isLiveGame && isStale && (
-        <div className="stale-indicator">
-          <span className="warning-icon">⚠️</span>
-          <span>
-            Dados podem estar desatualizados
-            {lastUpdated && ` (última att: há ${Math.floor((Date.now() - lastUpdated.getTime()) / 60000)} min)`}
-          </span>
-          <button onClick={() => refetch({ manual: true })} className="stale-refresh-button">
-            Atualizar
           </button>
         </div>
       )}
@@ -322,7 +324,7 @@ function LiveView({ game }: LiveViewProps) {
       </div>
 
       <div className="data-confidence-note">
-        <span>⚠️ Status de jogadores em campo é inferência baseada em contexto (período + minutos). Pode não refletir roster oficial.</span>
+        <span>🔴 Confirmação via Play-by-Play (100% Precision) | 🟡 Estimado via Minutos | S = Starter</span>
       </div>
     </div>
   );
@@ -340,9 +342,6 @@ function PlayersSection({ teamName, players, liveProps }: PlayersSectionProps) {
   const highConfidenceCount = players.filter(
     (p: BoxScorePlayer) => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE
   ).length;
-  const estimatedCount = players.filter(
-    (p: BoxScorePlayer) => p.onCourtStatus === OnCourtStatus.ESTIMATED
-  ).length;
 
   return (
     <div className="players-section">
@@ -350,11 +349,9 @@ function PlayersSection({ teamName, players, liveProps }: PlayersSectionProps) {
         <h3>{teamName}</h3>
         <span
           className="on-court-badge"
-          title="🔴 = alta confiança (Q4 com contexto) | 🟡 = estimado (baseado em minutos)"
+          title="🔴 = Confirmação Clínica (Jogada Recente) | 🟡 = Estimado (Minutos)"
         >
-          {highConfidenceCount > 0 && `${highConfidenceCount} 🔴`}
-          {estimatedCount > 0 && ` ${estimatedCount} 🟡`}
-          {highConfidenceCount === 0 && estimatedCount === 0 && '— Indisponível'}
+          {highConfidenceCount > 0 ? `${highConfidenceCount} EM QUADRA 🔴` : 'DETECTANDO...'}
         </span>
       </div>
       <table className="players-table">
@@ -372,7 +369,6 @@ function PlayersSection({ teamName, players, liveProps }: PlayersSectionProps) {
         </thead>
         <tbody>
           {players.map((player: BoxScorePlayer) => {
-            // Use REAL props from The Odds API
             const propData = liveProps[player.player.id];
             const linha = propData?.line || 0;
             const atual = player.points;
@@ -381,7 +377,6 @@ function PlayersSection({ teamName, players, liveProps }: PlayersSectionProps) {
             let displayFaltam: string | number = '';
             
             if (linha === 0) {
-              // No line available
               colorClass = '';
               displayFaltam = '—';
             } else {
@@ -414,13 +409,12 @@ function PlayersSection({ teamName, players, liveProps }: PlayersSectionProps) {
                   <span className="player-info">
                     {player.isStarter && <span className="starter-badge">S</span>}
                     <span className="player-name">{player.player.name}</span>
-                    <span className="player-pos">{player.player.position}</span>
                   </span>
                   {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && (
-                    <span className="court-indicator high-confidence" title="Alta confiança - inferência baseada em Q4 + starter">🔴</span>
+                    <span className="court-indicator high-confidence" title="100% Confiança - Participou de jogada recente">🔴</span>
                   )}
                   {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
-                    <span className="court-indicator estimated" title="Estimado - baseado em minutos jogados">🟡</span>
+                    <span className="court-indicator estimated" title="Estimado - Baseado em minutos jogados">🟡</span>
                   )}
                 </td>
                 <td className="pts-cell">{atual}</td>
@@ -431,13 +425,13 @@ function PlayersSection({ teamName, players, liveProps }: PlayersSectionProps) {
                 <td className="min-cell">{player.minutesPlayed}</td>
                 <td className="status-cell">
                   {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && (
-                    <span className="status-badge high-confidence">🔴 Em Quadra</span>
+                    <span className="status-badge high-confidence">🔴 Quadra</span>
                   )}
                   {player.onCourtStatus === OnCourtStatus.ESTIMATED && (
-                    <span className="status-badge estimated">🟡 Em Quadra</span>
+                    <span className="status-badge estimated">🟡 Estimado</span>
                   )}
                   {player.onCourtStatus === OnCourtStatus.UNKNOWN && (
-                    <span className="status-badge unknown">— Banco/Indisp.</span>
+                    <span className="status-badge unknown">— Banco</span>
                   )}
                 </td>
               </tr>

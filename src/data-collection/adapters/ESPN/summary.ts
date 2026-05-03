@@ -81,11 +81,79 @@ function parsePlayer(athleteItem: any, names: string[], teamAbbreviation: string
     threePointPct: tpta > 0 ? tptm / tpta : 0,
     freeThrowPct: fta > 0 ? ftm / fta : 0,
     efficiency: 0,
-    isOnCourt: false, // We will calculate this based on game status / heuristics
+    isOnCourt: false,
     onCourtStatus: OnCourtStatus.UNKNOWN,
     teamAbbreviation,
     isStarter: athleteItem.starter === true || athlete.starter === true,
   };
+}
+
+/**
+ * Lógica Clínica de Detecção de Jogadores em Quadra
+ * Analisa as jogadas recentes (PBP) para identificar evidências diretas de presença.
+ */
+function detectClinicalOnCourt(data: any, players: BoxScorePlayer[]): void {
+  const plays = data.plays || [];
+  if (plays.length === 0) return;
+
+  const onCourtIds = new Set<string>();
+  
+  // 1. Evidência Direta: Qualquer jogador em uma jogada recente (últimas 20 jogadas)
+  // que não seja uma substituição.
+  const recentPlays = plays.slice(-20);
+  recentPlays.forEach((play: any) => {
+    const type = play.type?.text?.toLowerCase() || '';
+    if (type.includes('substitution') || type.includes('enters') || type.includes('leaves')) return;
+
+    // Adiciona todos os participantes da jogada
+    if (play.participants) {
+      play.participants.forEach((p: any) => {
+        if (p.athlete?.id) onCourtIds.add(p.athlete.id);
+      });
+    }
+  });
+
+  // 2. Lógica de Substituição: Varre todas as jogadas para rastrear o estado atual
+  // (Iniciamos com os titulares se for o início do jogo, mas o PBP da ESPN é cumulativo)
+  plays.forEach((play: any) => {
+    const text = play.text?.toLowerCase() || '';
+    if (text.includes('enters the game for')) {
+      // Ex: "Cade Cunningham enters the game for Jaden Ivey"
+      // Precisamos extrair quem entrou e quem saiu. A ESPN costuma ter isso nos participants.
+      const enters = play.participants?.find((p: any) => text.includes(p.athlete?.displayName?.toLowerCase()) && text.indexOf(p.athlete?.displayName?.toLowerCase()) < text.indexOf('enters'));
+      const leaves = play.participants?.find((p: any) => text.includes(p.athlete?.displayName?.toLowerCase()) && text.indexOf(p.athlete?.displayName?.toLowerCase()) > text.indexOf('for'));
+      
+      if (enters?.athlete?.id) onCourtIds.add(enters.athlete.id);
+      if (leaves?.athlete?.id) onCourtIds.delete(leaves.athlete.id);
+    }
+  });
+
+  // 3. Aplica o status HIGH_CONFIDENCE baseado na evidência
+  players.forEach(p => {
+    if (onCourtIds.has(p.player.id)) {
+      p.isOnCourt = true;
+      p.onCourtStatus = OnCourtStatus.HIGH_CONFIDENCE;
+    }
+  });
+
+  // 4. Fallback ESTIMATED: Se um time tem < 5 jogadores detectados, 
+  // preenchemos com os top minutos que tenham jogado recentemente.
+  const teams = [...new Set(players.map(p => p.teamAbbreviation))];
+  teams.forEach(abbr => {
+    const teamPlayers = players.filter(p => p.teamAbbreviation === abbr);
+    const confirmedCount = teamPlayers.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE).length;
+    
+    if (confirmedCount < 5) {
+      const candidates = teamPlayers
+        .filter(p => p.onCourtStatus === OnCourtStatus.UNKNOWN && (parseInt(p.minutesPlayed) || 0) > 0)
+        .sort((a, b) => (parseInt(b.minutesPlayed) || 0) - (parseInt(a.minutesPlayed) || 0));
+      
+      for (let i = 0; i < (5 - confirmedCount) && i < candidates.length; i++) {
+        candidates[i].isOnCourt = true;
+        candidates[i].onCourtStatus = OnCourtStatus.ESTIMATED;
+      }
+    }
+  });
 }
 
 export function normalizeSummaryToBoxScore(data: any): BoxScore {
@@ -141,22 +209,9 @@ export function normalizeSummaryToBoxScore(data: any): BoxScore {
   const gameStatusText = data.header.competitions[0].status.type.state; // 'pre', 'in', 'post'
   const isLive = gameStatusText === 'in';
   
+  const allPlayers = [...homePlayers, ...awayPlayers];
   if (isLive) {
-    // Basic heuristic for onCourt: Starters are on court initially, or players with minutes > 0
-    // A better heuristic is needed, but for now we pick top 5 minutes players
-    const markOnCourt = (players: BoxScorePlayer[]) => {
-      const sorted = [...players].sort((a, b) => {
-        const minA = parseInt(a.minutesPlayed) || 0;
-        const minB = parseInt(b.minutesPlayed) || 0;
-        return minB - minA;
-      });
-      for (let i = 0; i < 5 && i < sorted.length; i++) {
-        const p = players.find(x => x.player.id === sorted[i].player.id);
-        if (p) p.isOnCourt = true;
-      }
-    };
-    markOnCourt(homePlayers);
-    markOnCourt(awayPlayers);
+    detectClinicalOnCourt(data, allPlayers);
   }
 
   const calculateTeamStats = (players: BoxScorePlayer[]) => {
@@ -189,7 +244,7 @@ export function normalizeSummaryToBoxScore(data: any): BoxScore {
     awayScore,
     clock: data.header.competitions[0].status.displayClock || '',
     period: data.header.competitions[0].status.period || 1,
-    players: [...homePlayers, ...awayPlayers],
+    players: allPlayers,
     teamStats: {
       [homeAbbr]: calculateTeamStats(homePlayers),
       [awayAbbr]: calculateTeamStats(awayPlayers),
