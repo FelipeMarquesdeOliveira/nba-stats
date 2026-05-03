@@ -224,6 +224,14 @@
   font-weight: 500;
 }
 
+.p-number {
+  color: var(--text-muted);
+  font-family: 'Sora', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  min-width: 20px;
+}
+
 .starter-star {
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.2);

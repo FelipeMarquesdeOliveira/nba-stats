@@ -305,6 +305,7 @@ function LiveTeamTable({ title, players, liveProps, side }: { title: string, pla
                 <tr key={player.player.id} className={`${player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE ? 'active-row' : ''}`}>
                   <td className="name-cell">
                     {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && <span className="live-dot"></span>}
+                    <span className="p-number">#{player.player.jerseyNumber}</span>
                     <span className="p-name">{player.player.name}</span>
                     {player.isStarter && <span className="starter-star">★</span>}
                   </td>
