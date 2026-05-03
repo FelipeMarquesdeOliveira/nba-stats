@@ -241,13 +241,13 @@ function LiveView({ game }: LiveViewProps) {
         </div>
         
         {boxscore.recentPlays && boxscore.recentPlays.length > 0 && (
-          <div className="recent-plays-feed">
-            <div className="plays-title">Últimas Jogadas</div>
-            <div className="plays-list">
-              {boxscore.recentPlays.slice(0, 4).map(play => (
-                <div key={play.id} className={`play-item ${play.scoringPlay ? 'scoring' : ''}`}>
-                  <span className="play-clock">{play.clock}</span>
-                  <span className="play-text">{play.text}</span>
+          <div className="plays-ticker-container">
+            <div className="plays-ticker-label">LIVE FEED</div>
+            <div className="plays-ticker-track">
+              {boxscore.recentPlays.map(play => (
+                <div key={play.id} className={`ticker-item ${play.scoringPlay ? 'scoring' : ''}`}>
+                  <span className="ticker-clock">{play.clock}</span>
+                  <span className="ticker-text">{play.text}</span>
                 </div>
               ))}
             </div>
