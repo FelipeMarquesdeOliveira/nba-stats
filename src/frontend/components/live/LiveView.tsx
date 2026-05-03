@@ -1,6 +1,23 @@
+import { useState, useEffect, useRef } from 'react';
 import { Game, GameStatus, OnCourtStatus, BoxScorePlayer } from '@domain/types';
 import { useLiveGame } from '@frontend/hooks/useLiveGame';
+import { oddsGateway, OddsGatewayImpl } from '@data-collection';
 import './LiveView.css';
+
+// ─── Line Change Notification System ────────────────────────────
+
+interface LineChangeNotification {
+  id: number;
+  playerName: string;
+  oldLine: number;
+  newLine: number;
+  direction: 'up' | 'down';
+  timestamp: number;
+}
+
+let notificationId = 0;
+
+// ─── Main Component ─────────────────────────────────────────────
 
 interface LiveViewProps {
   game: Game;
@@ -21,6 +38,116 @@ function LiveView({ game }: LiveViewProps) {
     game.status === GameStatus.FINAL ? 'final' : 'scheduled';
 
   const { boxscore, loading, error, refetch, isStale, lastUpdated, circuitOpen, isManualRefreshing } = useLiveGame(game.id, gameStatus);
+  
+  // Live props state
+  const [liveProps, setLiveProps] = useState<Record<string, { line: number; over: number; under: number }>>({});
+  const prevPropsRef = useRef<Record<string, number>>({});
+  const [notifications, setNotifications] = useState<LineChangeNotification[]>([]);
+
+  // ─── Auto Live Mode Activation ──────────────────────────────
+  useEffect(() => {
+    const isLive = game.status === GameStatus.LIVE;
+    (oddsGateway as OddsGatewayImpl).setLiveMode(isLive);
+    
+    return () => {
+      // Deactivate live mode when leaving this view
+      (oddsGateway as OddsGatewayImpl).setLiveMode(false);
+    };
+  }, [game.status]);
+
+  // ─── Fetch Props for On-Court Players Only ──────────────────
+  useEffect(() => {
+    if (!boxscore || game.status !== GameStatus.LIVE) return;
+
+    let ignore = false;
+
+    async function fetchOnCourtProps() {
+      // Get only players who are on court (HIGH_CONFIDENCE or ESTIMATED)
+      const allPlayers = [
+        ...boxscore!.homeTeam.players,
+        ...boxscore!.awayTeam.players
+      ];
+      
+      const onCourtPlayers = allPlayers.filter(p => 
+        p.isStarter && (
+          p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE || 
+          p.onCourtStatus === OnCourtStatus.ESTIMATED
+        )
+      );
+
+      // If no on-court detection yet, use starters
+      const playersToFetch = onCourtPlayers.length > 0 
+        ? onCourtPlayers 
+        : allPlayers.filter(p => p.isStarter);
+
+      const newProps: Record<string, { line: number; over: number; under: number }> = {};
+      
+      for (const player of playersToFetch) {
+        if (ignore) return;
+        try {
+          const prop = await oddsGateway.getPlayerPointsLine(
+            player.player.id, 
+            game.id, 
+            player.player.name
+          );
+          if (prop && prop.line > 0) {
+            newProps[player.player.id] = { 
+              line: prop.line, 
+              over: prop.overOdds, 
+              under: prop.underOdds 
+            };
+          }
+        } catch (_) {}
+      }
+
+      if (ignore) return;
+
+      // ─── Detect Line Changes & Notify ─────────────────────
+      const prevLines = prevPropsRef.current;
+      const newNotifications: LineChangeNotification[] = [];
+
+      for (const [playerId, propData] of Object.entries(newProps)) {
+        const prevLine = prevLines[playerId];
+        if (prevLine !== undefined && prevLine !== propData.line) {
+          const player = allPlayers.find(p => p.player.id === playerId);
+          newNotifications.push({
+            id: ++notificationId,
+            playerName: player?.player.name || playerId,
+            oldLine: prevLine,
+            newLine: propData.line,
+            direction: propData.line > prevLine ? 'up' : 'down',
+            timestamp: Date.now()
+          });
+        }
+        prevLines[playerId] = propData.line;
+      }
+
+      prevPropsRef.current = prevLines;
+      setLiveProps(newProps);
+
+      if (newNotifications.length > 0) {
+        setNotifications(prev => [...newNotifications, ...prev].slice(0, 10));
+      }
+    }
+
+    fetchOnCourtProps();
+
+    // Auto-refresh props every 90 seconds during live
+    const interval = setInterval(fetchOnCourtProps, 90 * 1000);
+    return () => { 
+      ignore = true; 
+      clearInterval(interval); 
+    };
+  }, [boxscore, game.status, game.id]);
+
+  // Auto-dismiss notifications after 8 seconds
+  useEffect(() => {
+    if (notifications.length === 0) return;
+    const timer = setTimeout(() => {
+      setNotifications(prev => prev.filter(n => Date.now() - n.timestamp < 8000));
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [notifications]);
 
   if (loading) {
     return (
@@ -95,6 +222,27 @@ function LiveView({ game }: LiveViewProps) {
 
   return (
     <div className="live-view animate-fadeIn">
+      {/* ─── Line Change Notifications ──────────────────────── */}
+      {notifications.length > 0 && (
+        <div className="line-notifications">
+          {notifications.map(n => (
+            <div 
+              key={n.id} 
+              className={`line-notification ${n.direction}`}
+              onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
+            >
+              <span className="notif-icon">{n.direction === 'up' ? '📈' : '📉'}</span>
+              <span className="notif-text">
+                <strong>{n.playerName}</strong>: {n.oldLine} → {n.newLine}
+                <span className={`notif-direction ${n.direction}`}>
+                  {n.direction === 'up' ? ' ▲ Subiu' : ' ▼ Desceu'}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {isLiveGame && (
         <div className="refresh-header">
           <div className="timestamp-info">
@@ -163,11 +311,13 @@ function LiveView({ game }: LiveViewProps) {
         <PlayersSection
           teamName={game.awayTeam.shortName}
           players={awayPlayers}
+          liveProps={liveProps}
         />
 
         <PlayersSection
           teamName={game.homeTeam.shortName}
           players={homePlayers}
+          liveProps={liveProps}
         />
       </div>
 
@@ -178,12 +328,15 @@ function LiveView({ game }: LiveViewProps) {
   );
 }
 
+// ─── Players Section (with REAL props) ──────────────────────────
+
 interface PlayersSectionProps {
   teamName: string;
   players: BoxScorePlayer[];
+  liveProps: Record<string, { line: number; over: number; under: number }>;
 }
 
-function PlayersSection({ teamName, players }: PlayersSectionProps) {
+function PlayersSection({ teamName, players, liveProps }: PlayersSectionProps) {
   const highConfidenceCount = players.filter(
     (p: BoxScorePlayer) => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE
   ).length;
@@ -219,36 +372,33 @@ function PlayersSection({ teamName, players }: PlayersSectionProps) {
         </thead>
         <tbody>
           {players.map((player: BoxScorePlayer) => {
-            // Simulated points line for demonstration
-            let hash = 0;
-            const pid = player.player.id;
-            for (let i = 0; i < pid.length; i++) hash = pid.charCodeAt(i) + ((hash << 5) - hash);
-            // Give them a plausible line
-            let linha = Math.floor(Math.abs(Math.sin(hash)) * 25) + 5.5; 
-            
-            // For players who already scored a lot, make the line higher so it's realistic
-            if (player.points > linha - 3) {
-                linha = player.points + (Math.floor(Math.abs(Math.cos(hash)) * 10) + 1.5);
-            }
-
+            // Use REAL props from The Odds API
+            const propData = liveProps[player.player.id];
+            const linha = propData?.line || 0;
             const atual = player.points;
-            const rawFaltam = linha - atual;
-            
+
             let colorClass = '';
             let displayFaltam: string | number = '';
             
-            if (rawFaltam <= 0) {
-              colorClass = 'hit-green'; // passed the line
-              displayFaltam = 'Bateu';
+            if (linha === 0) {
+              // No line available
+              colorClass = '';
+              displayFaltam = '—';
             } else {
-              const faltamInt = Math.ceil(rawFaltam); // number of points to hit
-              displayFaltam = faltamInt;
-              if (rawFaltam <= 3.5) {
-                colorClass = 'near-green';
-              } else if (rawFaltam <= 6.5) {
-                colorClass = 'mid-yellow';
+              const rawFaltam = linha - atual;
+              if (rawFaltam <= 0) {
+                colorClass = 'hit-green';
+                displayFaltam = '✅ Bateu';
               } else {
-                colorClass = 'far-red';
+                const faltamInt = Math.ceil(rawFaltam);
+                displayFaltam = faltamInt;
+                if (rawFaltam <= 3.5) {
+                  colorClass = 'near-green';
+                } else if (rawFaltam <= 6.5) {
+                  colorClass = 'mid-yellow';
+                } else {
+                  colorClass = 'far-red';
+                }
               }
             }
 
@@ -274,7 +424,7 @@ function PlayersSection({ teamName, players }: PlayersSectionProps) {
                   )}
                 </td>
                 <td className="pts-cell">{atual}</td>
-                <td className="line-cell">{linha}</td>
+                <td className="line-cell">{linha > 0 ? linha : '—'}</td>
                 <td className={`faltam-cell ${colorClass}`}>{displayFaltam}</td>
                 <td>{player.rebounds}</td>
                 <td>{player.assists}</td>

@@ -1,5 +1,101 @@
 .live-view {
   color: #fff;
+  position: relative;
+}
+
+/* ─── Line Change Notifications ──────────────────────────────── */
+
+.line-notifications {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 350px;
+}
+
+.line-notification {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  animation: slideInRight 0.4s ease-out;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.line-notification.up {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.line-notification.down {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.notif-icon {
+  font-size: 1.2rem;
+}
+
+.notif-text {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.notif-text strong {
+  color: #fff;
+}
+
+.notif-direction.up {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.notif-direction.down {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ─── Faltam Column Colors ───────────────────────────────────── */
+
+.faltam-cell.hit-green {
+  color: #22c55e;
+  font-weight: 700;
+  animation: greenPulse 2s infinite;
+}
+
+.faltam-cell.near-green {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.faltam-cell.mid-yellow {
+  color: #eab308;
+}
+
+.faltam-cell.far-red {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+@keyframes greenPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .refresh-header {
