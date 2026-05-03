@@ -191,6 +191,14 @@ export function normalizeSummaryToBoxScore(data: any): BoxScore {
     awayScore,
     clock: data.header.competitions[0].status.displayClock || '',
     period: data.header.competitions[0].status.period || 1,
+    recentPlays: (data.plays || []).slice(-10).map((p: any) => ({
+      id: p.id,
+      text: p.text,
+      clock: p.clock?.displayValue || '',
+      period: p.period?.number || 1,
+      teamId: p.team?.id,
+      scoringPlay: p.scoringPlay === true
+    })).reverse(),
     players: [...homePlayers, ...awayPlayers],
     teamStats: {
       [homeAbbr]: calculateTeamStats(homePlayers),

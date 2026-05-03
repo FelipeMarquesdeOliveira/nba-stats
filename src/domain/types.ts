@@ -301,6 +301,7 @@ export interface BoxScore {
   clock?: string;
   gameStatus?: GameStatus;
   lastPlay?: string;
+  recentPlays?: { id: string; text: string; clock: string; period: number; teamId?: string; scoringPlay?: boolean }[];
   players: BoxScorePlayer[];
   teamStats?: Record<string, Record<string, number>>;
   highlights: GameHighlights[];

@@ -122,12 +122,7 @@ function LiveView({ game }: LiveViewProps) {
 
       const allPlayers = [...boxscore.homeTeam.players, ...boxscore.awayTeam.players];
       
-      const confirmedOnCourt = allPlayers.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE);
-      const estimatedOnCourt = allPlayers.filter(p => p.onCourtStatus === OnCourtStatus.ESTIMATED);
-      
-      let playersToFetch = confirmedOnCourt.length > 0 
-        ? [...confirmedOnCourt, ...estimatedOnCourt].slice(0, 14)
-        : allPlayers.filter(p => p.isStarter);
+      let playersToFetch = allPlayers;
 
       const newProps: Record<string, { line: number; over: number; under: number }> = {};
       
@@ -240,7 +235,20 @@ function LiveView({ game }: LiveViewProps) {
             <span className="team-abbr">{game.homeTeam.abbreviation}</span>
           </div>
         </div>
-
+        
+        {boxscore.recentPlays && boxscore.recentPlays.length > 0 && (
+          <div className="recent-plays-feed">
+            <div className="plays-title">Últimas Jogadas</div>
+            <div className="plays-list">
+              {boxscore.recentPlays.slice(0, 4).map(play => (
+                <div key={play.id} className={`play-item ${play.scoringPlay ? 'scoring' : ''}`}>
+                  <span className="play-clock">{play.clock}</span>
+                  <span className="play-text">{play.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="live-grid">

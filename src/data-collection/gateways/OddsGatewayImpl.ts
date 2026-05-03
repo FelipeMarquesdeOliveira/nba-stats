@@ -54,8 +54,8 @@ export class OddsGatewayImpl implements OddsGateway {
     const keys: string[] = [];
     const env = (import.meta as any).env || {};
     
-    // Load from env vars (VITE_ODDS_API_KEY, _2, _3, _4, _5, _6)
-    const suffixes = ['', '_2', '_3', '_4', '_5', '_6'];
+    // Load from env vars (VITE_ODDS_API_KEY, _2, _3, _4, _5, _6, _7, _8, _9, _10)
+    const suffixes = ['', '_2', '_3', '_4', '_5', '_6', '_7', '_8', '_9', '_10'];
     for (const s of suffixes) {
       const k = env[`VITE_ODDS_API_KEY${s}`];
       if (k && k.trim()) keys.push(k.trim());
