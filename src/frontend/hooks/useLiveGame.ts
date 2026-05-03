@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { BoxScore, OnCourtStatus } from '@domain/types';
-import { liveBoxScoreGateway, circuitBreaker, CircuitState, DataSource } from '@data-collection';
+import { liveBoxScoreGateway, circuitBreaker, CircuitState, DataSource, DATA_COLLECTION_CONFIG } from '@data-collection';
 
 interface UseLiveGameResult {
   boxscore: BoxScore | null;
@@ -115,7 +115,7 @@ export function useLiveGame(
 
     // Normal polling based on game status
     if (gameStatus === 'live') {
-      return 20_000; // 20s for live games
+      return DATA_COLLECTION_CONFIG.polling.boxscoreLiveMs; 
     } else if (gameStatus === 'final') {
       return 60_000; // 60s for final games
     }

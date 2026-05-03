@@ -26,8 +26,8 @@ export const DATA_COLLECTION_CONFIG = {
 
   // Polling intervals
   polling: {
-    scoreboardLiveMs: 15000,      // 15 seconds — scoreboard
-    boxscoreLiveMs: 10000,        // 10 seconds — boxscore/PBP (substitutions)
+    scoreboardLiveMs: 10000,      // 10 seconds — scoreboard
+    boxscoreLiveMs: 5000,         // 5 seconds — boxscore/PBP (substitutions)
     injuriesMs: 600000,           // 10 minutes
   },
 
