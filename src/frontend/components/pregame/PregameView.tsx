@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
-import { 
-  Game, 
-  InjuryStatus, 
-  AvailabilityItem, 
-  PlayerStats, 
+import {
+  Game,
+  InjuryStatus,
+  AvailabilityItem,
+  PlayerStats,
   PlayerPointsLine,
   Team,
   GameStatus
 } from '@domain/types';
-import { 
-  getGameStarters, 
+import {
+  getGameStarters,
   getTeamLastGameStarters,
-  playerGateway, 
-  oddsGateway 
+  playerGateway,
+  oddsGateway
 } from '@data-collection';
 import { useInjuries } from '@frontend/hooks/useInjuries';
 import './PregameView.css';
@@ -48,31 +48,34 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
   // Filtro de lesões mais rigoroso para evitar jogadores de outros times
   const filterInjuries = (team: Game['homeTeam']) => {
     if (!team) return [];
-    
+
     const searchName = team.name.toLowerCase();
     const searchAbbr = team.abbreviation.toLowerCase();
     const searchId = team.id;
-    
+
     return injuries.filter(i => {
       // 1. Match prioritário por ID do time (mais seguro)
       if (searchId && i.player.teamId === searchId) return true;
 
       const injuryTeam = (i.teamName || '').toLowerCase();
-      
+
       // 2. Match exato do nome completo ou abreviação
       if (injuryTeam === searchName) return true;
       if (injuryTeam === searchAbbr) return true;
-      
+
       // 3. Regra especial para Philadelphia vs Memphis (evita PHI bater em MemPHIs)
       if (searchAbbr === 'phi' && injuryTeam.includes('memphis')) return false;
 
-      // 4. Verificação por palavras completas
+      // 4. Verificação pelo mascote/último nome (ex: "Knicks", "Lakers")
+      // Evita o problema de "New York" dar match em "New Orleans" por causa da palavra "New"
       const teamWords = searchName.split(' ');
-      const isMatchByWord = injuryTeam.split(' ').some(word => 
-        word === searchAbbr || teamWords.includes(word)
-      );
+      const mascot = teamWords.length > 1 ? teamWords[teamWords.length - 1] : searchName;
+      
+      if (mascot.length > 2 && injuryTeam.includes(mascot)) {
+        return true;
+      }
 
-      return isMatchByWord;
+      return false;
     });
   };
 
@@ -141,14 +144,14 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
           </div>
 
           <div className="report-columns">
-            <TeamInjuryList 
-              teamName={game.awayTeam.shortName} 
-              injuries={awayInjuries} 
+            <TeamInjuryList
+              teamName={game.awayTeam.shortName}
+              injuries={awayInjuries}
             />
             <div className="vertical-divider"></div>
-            <TeamInjuryList 
-              teamName={game.homeTeam.shortName} 
-              injuries={homeInjuries} 
+            <TeamInjuryList
+              teamName={game.homeTeam.shortName}
+              injuries={homeInjuries}
             />
           </div>
         </div>
@@ -179,7 +182,7 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
 
   useEffect(() => {
     let ignore = false;
-    
+
     async function loadData() {
       setLoading(true);
       try {
@@ -189,7 +192,7 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
         // Try current game starters first
         const currentStarters = await getGameStarters(gameId);
         if (ignore) return;
-        
+
         awayStarters = currentStarters.find(s => s.teamId === awayTeam.id)?.players || [];
         homeStarters = currentStarters.find(s => s.teamId === homeTeam.id)?.players || [];
 
@@ -200,15 +203,15 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
         if (homeStarters.length === 0) {
           homeStarters = await getTeamLastGameStarters(homeTeam.id);
         }
-        
+
         if (ignore) return;
 
-        const posOrder: Record<string, number> = { 
-          'PG': 1, 'G': 2, 'SG': 3, 
-          'SF': 4, 'F': 5, 'PF': 6, 
-          'C': 7 
+        const posOrder: Record<string, number> = {
+          'PG': 1, 'G': 2, 'SG': 3,
+          'SF': 4, 'F': 5, 'PF': 6,
+          'C': 7
         };
-        
+
         const awayData = (await Promise.all(awayStarters.map(async p => {
           try {
             return {
@@ -250,18 +253,18 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
         if (!ignore) setLoading(false);
       }
     }
-    
+
     loadData();
     return () => { ignore = true; };
   }, [gameId, homeTeam.id, awayTeam.id, refreshKey]);
 
   if (loading) return (
     <div className="props-side-by-side loading-state">
-       <div className="loading-spinner-mini"></div>
-       <span>Analisando tendências dos titulares...</span>
+      <div className="loading-spinner-mini"></div>
+      <span>Analisando tendências dos titulares...</span>
     </div>
   );
-  
+
   if (!data) return null;
 
   return (
@@ -281,7 +284,7 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
           </thead>
           <tbody>
             {data.away.map((item, idx) => (
-              <PlayerPropRow 
+              <PlayerPropRow
                 key={idx}
                 name={item.player.name}
                 number={item.player.jersey || ""}
@@ -310,7 +313,7 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
           </thead>
           <tbody>
             {data.home.map((item, idx) => (
-              <PlayerPropRow 
+              <PlayerPropRow
                 key={idx}
                 name={item.player.name}
                 number={item.player.jersey || ""}
@@ -329,7 +332,7 @@ function PlayerPropRow({ name, number, last5, line }: { name: string; number: st
   const avg = last5.reduce((a, b) => a + b, 0) / last5.length;
   // Signal value only if average is at least 0.5 points above the line
   const isAvgHigher = avg >= (line + 0.5);
-  
+
   return (
     <tr>
       <td>
@@ -374,7 +377,7 @@ function TeamCard({ team, record, isB2B, side }: TeamCardProps) {
           <span className="team-location">{side === 'home' ? 'Mandante' : 'Visitante'}</span>
         </div>
       </div>
-      
+
       <div className="team-stats-row">
         {record && (
           <div className="stat-pill">
@@ -399,7 +402,7 @@ interface TeamAvailabilityProps {
 
 function TeamInjuryList({ teamName, injuries }: TeamAvailabilityProps) {
   const hasInjuries = injuries.length > 0;
-  
+
   const grouped = {
     OUT: injuries.filter(i => i.status === InjuryStatus.OUT),
     DOUBTFUL: injuries.filter(i => i.status === InjuryStatus.DOUBTFUL),
