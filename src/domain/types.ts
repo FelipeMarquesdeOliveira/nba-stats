@@ -339,12 +339,7 @@ export interface InjuryGateway {
   getInjuriesByTeam(teamId: string): Promise<AvailabilityItem[]>;
 }
 
-export interface PlayerPointsLine {
-  playerId: string;
-  line: number;
-  overOdds?: number;
-  underOdds?: number;
-}
+
 
 export interface PlayerStats {
   id: string;
@@ -477,3 +472,46 @@ export function detectHighlights(
 
   return highlights.slice(0, 10);
 }
+
+// =============================================================================
+// PLAYER PROFILE TYPES
+// =============================================================================
+
+export interface PlayerProfile {
+  id: string;
+  name: string;
+  team: { id: string; name: string; abbreviation: string; logoUrl: string };
+  position: string;
+  jersey: string;
+  height: string;
+  weight: string;
+  experience: string;
+  headshot: string;
+  seasonStats: {
+    ppg: number;
+    rpg: number;
+    apg: number;
+    fgPct: number;
+    fg3Pct: number;
+    ftPct: number;
+    gamesPlayed: number;
+    mpg: number;
+  };
+  gamelog: Array<{
+    gameId: string;
+    date: string;
+    opponent: string;
+    isHome: boolean;
+    points: number;
+    rebounds: number;
+    assists: number;
+    minutes: string;
+    fg: string;
+    threePt: string;
+    ft: string;
+  }>;
+}
+
+export interface PlayerProfileGateway {
+  getPlayerProfile(playerId: string): Promise<PlayerProfile | null>;
+}

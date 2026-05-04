@@ -60,10 +60,6 @@ export function normalizeEventToGame(event: ESPNEvent): Game {
     broadcaster: competition.broadcasts?.map(b => b.names[0]).join(', '),
     homeTeamRecord: homeRecords,
     awayTeamRecord: awayRecords,
-    odds: competition.odds?.[0] ? {
-      spread: (competition.odds[0] as any).details,
-      overUnder: (competition.odds[0] as any).overUnder?.toString(),
-    } : undefined,
   };
 }
 
@@ -91,16 +87,23 @@ function extractRecords(records?: { summary: string; type: string }[]): TeamReco
   };
 }
 
-function createTeam(team?: TeamInput): Team {
+function createTeam(team?: TeamInput & { color?: string; alternateColor?: string }): Team {
+  const id = team?.id || '';
+  const abbr = (team?.abbreviation || '').toLowerCase();
+  
+  // ESPN logo URL pattern is very consistent using the abbreviation
+  const espnLogo = abbr ? `https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/${abbr}.png` : '';
+  
   return {
-    id: team?.id || '',
+    id: id,
     name: team?.displayName || team?.name || '',
     shortName: team?.abbreviation || '',
     abbreviation: team?.abbreviation || '',
     city: '',
-    conference: 'East', // Default, would need more data to determine
-    primaryColor: '#000000',
-    secondaryColor: '#ffffff',
+    conference: 'East', 
+    logoUrl: team?.logo || espnLogo,
+    primaryColor: team?.color ? `#${team.color}` : '#000000',
+    secondaryColor: team?.alternateColor ? `#${team.alternateColor}` : '#ffffff',
   };
 }
 
@@ -169,7 +172,7 @@ export function normalizeInjuriesResponse(response: ESPNInjuriesResponse): Avail
 /**
  * Normalize single injury to domain AvailabilityItem
  */
-function normalizeInjury(injury: InjuryInput & { athlete: ESPNInjuryAthlete }, groupTeamName: string): AvailabilityItem | null {
+function normalizeInjury(injury: any, groupTeamName: string): AvailabilityItem | null {
   if (!injury.athlete) return null;
 
   const status = normalizeInjuryStatus(injury.status);

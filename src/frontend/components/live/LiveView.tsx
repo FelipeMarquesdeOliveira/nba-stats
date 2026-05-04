@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Game, GameStatus, OnCourtStatus, BoxScorePlayer } from '@domain/types';
 import { useLiveGame } from '@frontend/hooks/useLiveGame';
 import { oddsGateway, OddsGatewayImpl } from '@data-collection';
+import { GameHeader } from '../common/GameHeader';
 import './LiveView.css';
 
 // ─── Notification System ────────────────────────────────────────
@@ -37,11 +39,6 @@ function LiveView({ game }: LiveViewProps) {
   const prevOnCourtRef = useRef<Record<string, OnCourtStatus>>({});
   const [notifications, setNotifications] = useState<LiveNotification[]>([]);
   
-  // Score animation tracking
-  const prevScoreRef = useRef<{ home: number; away: number }>({ home: 0, away: 0 });
-  const [homeScoreFlash, setHomeScoreFlash] = useState(false);
-  const [awayScoreFlash, setAwayScoreFlash] = useState(false);
-
   // Odds Countdown Effect — lightweight 1s tick
   useEffect(() => {
     if (game.status !== GameStatus.LIVE) return;
@@ -62,24 +59,6 @@ function LiveView({ game }: LiveViewProps) {
     };
   }, [game.status, game.id, game.homeTeam.name, game.awayTeam.name]);
 
-  // ─── Score Change Animation ─────────────────────────────────
-  useEffect(() => {
-    if (!boxscore) return;
-
-    const prevHome = prevScoreRef.current.home;
-    const prevAway = prevScoreRef.current.away;
-
-    if (boxscore.homeScore > prevHome && prevHome > 0) {
-      setHomeScoreFlash(true);
-      setTimeout(() => setHomeScoreFlash(false), 1200);
-    }
-    if (boxscore.awayScore > prevAway && prevAway > 0) {
-      setAwayScoreFlash(true);
-      setTimeout(() => setAwayScoreFlash(false), 1200);
-    }
-
-    prevScoreRef.current = { home: boxscore.homeScore, away: boxscore.awayScore };
-  }, [boxscore?.homeScore, boxscore?.awayScore]);
 
   // ─── Track Substitutions ────────────────────────────────────
   useEffect(() => {
@@ -237,28 +216,23 @@ function LiveView({ game }: LiveViewProps) {
       </div>
 
       {/* Header */}
-      <div className="live-header-card glass">
-        <div className="live-status-row">
-          <div className="live-badge-pulse">AO VIVO</div>
-          <div className="live-clock">{boxscore.period}Q • {boxscore.clock}</div>
-          <div className="clinical-indicator">
-            <span className="dot pulse"></span> CLINICAL ACTIVE
-            <span className="odds-timer-pill">LINHAS EM {oddsTimer}s</span>
-          </div>
-        </div>
+      <GameHeader
+        game={game}
+        status="live"
+        homeScore={boxscore.homeScore}
+        awayScore={boxscore.awayScore}
+        period={boxscore.period}
+        clock={boxscore.clock}
+      />
 
-        <div className="score-main-row">
-          <div className="team-score-block">
-            <span className="team-abbr">{game.awayTeam.abbreviation}</span>
-            <span className={`score-value ${awayScoreFlash ? 'score-flash' : ''}`}>{boxscore.awayScore}</span>
-          </div>
-          <div className="score-divider">VS</div>
-          <div className="team-score-block">
-            <span className="team-abbr">{game.homeTeam.abbreviation}</span>
-            <span className={`score-value ${homeScoreFlash ? 'score-flash' : ''}`}>{boxscore.homeScore}</span>
-          </div>
+      <div className="live-status-bar">
+        <div className="clinical-indicator">
+          <span className="dot pulse"></span> CLINICAL ACTIVE
+          <span className="odds-timer-pill">LINHAS EM {oddsTimer}s</span>
         </div>
-        
+      </div>
+      
+      <div className="live-ticker-card glass">
         {boxscore.recentPlays && boxscore.recentPlays.length > 0 && (
           <div className="plays-ticker-container">
             <div className="plays-ticker-label">LIVE FEED</div>
@@ -280,12 +254,14 @@ function LiveView({ game }: LiveViewProps) {
           players={awayPlayers} 
           liveProps={liveProps}
           side="away"
+          gameId={game.id}
         />
         <LiveTeamTable 
           title={game.homeTeam.name} 
           players={homePlayers} 
           liveProps={liveProps}
           side="home"
+          gameId={game.id}
         />
       </div>
     </div>
@@ -294,11 +270,12 @@ function LiveView({ game }: LiveViewProps) {
 
 // ─── Memoized Team Table ───────────────────────────────────────
 
-const LiveTeamTable = memo(function LiveTeamTable({ title, players, liveProps, side }: { 
+const LiveTeamTable = memo(function LiveTeamTable({ title, players, liveProps, side, gameId }: { 
   title: string; 
   players: BoxScorePlayer[]; 
   liveProps: Record<string, { line: number; over: number; under: number }>;
   side: string;
+  gameId: string;
 }) {
   const onCourtCount = players.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE).length;
 
@@ -329,6 +306,7 @@ const LiveTeamTable = memo(function LiveTeamTable({ title, players, liveProps, s
                 key={player.player.id} 
                 player={player} 
                 prop={liveProps[player.player.id]} 
+                gameId={gameId}
               />
             ))}
           </tbody>
@@ -340,10 +318,12 @@ const LiveTeamTable = memo(function LiveTeamTable({ title, players, liveProps, s
 
 // ─── Memoized Player Row ──────────────────────────────────────
 
-const PlayerRow = memo(function PlayerRow({ player, prop }: { 
+const PlayerRow = memo(function PlayerRow({ player, prop, gameId }: { 
   player: BoxScorePlayer; 
   prop?: { line: number; over: number; under: number };
+  gameId: string;
 }) {
+  const navigate = useNavigate();
   const line = prop?.line || 0;
   const remaining = line > 0 ? line - player.points : null;
   
@@ -363,10 +343,29 @@ const PlayerRow = memo(function PlayerRow({ player, prop }: {
   return (
     <tr className={isOnCourt ? 'active-row' : ''}>
       <td className="name-cell">
-        {isOnCourt && <span className="live-dot"></span>}
-        <span className="p-number">#{player.player.jerseyNumber}</span>
-        <span className="p-name">{player.player.name}</span>
-        {player.isStarter && <span className="starter-star">★</span>}
+        <div 
+          className="player-identity" 
+          onClick={() => navigate(`/players/${player.player.id}?gameId=${gameId}`)}
+          style={{ cursor: 'pointer' }}
+          title={`Ver perfil de ${player.player.name}`}
+        >
+          <img 
+            src={`https://a.espncdn.com/i/headshots/nba/players/full/${player.player.id}.png`} 
+            alt={player.player.name} 
+            className="player-img-mini"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://www.nba.com/assets/img/default-player-headshot.png';
+            }}
+          />
+          <div className="player-info-stacked">
+            <div className="player-name-line">
+              {isOnCourt && <span className="live-dot"></span>}
+              <span className="p-name">{player.player.name}</span>
+              {player.isStarter && <span className="starter-star">★</span>}
+            </div>
+            <span className="p-number">#{player.player.jerseyNumber}</span>
+          </div>
+        </div>
       </td>
       <td className="val-cell bold">{player.points}</td>
       <td className="val-cell">{line > 0 ? line : '—'}</td>

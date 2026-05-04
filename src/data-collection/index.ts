@@ -23,6 +23,7 @@ export { injuryGateway, InjuryGatewayImpl } from './gateways/InjuryGatewayImpl';
 export { boxScoreGateway, liveBoxScoreGateway, BoxScoreGatewayImpl, LiveBoxScoreGatewayImpl } from './gateways/BoxScoreGatewayImpl';
 export { oddsGateway, OddsGatewayImpl } from './gateways/OddsGatewayImpl';
 export { playerGateway, PlayerGatewayImpl } from './gateways/PlayerGatewayImpl';
+export { playerProfileGateway, PlayerProfileGatewayImpl } from './gateways/PlayerProfileGatewayImpl';
 
 // Config
-export { DATA_COLLECTION_CONFIG } from './config';
+export { DATA_COLLECTION_CONFIG } from './config';

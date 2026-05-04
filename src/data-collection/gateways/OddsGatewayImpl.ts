@@ -1,6 +1,5 @@
 
 import { OddsGateway, PlayerPointsLine, TeamPointsLine } from '@domain/types';
-import { logger, DataSource } from '../infrastructure';
 
 /**
  * The Odds API — Smart Caching Strategy
@@ -359,7 +358,7 @@ export class OddsGatewayImpl implements OddsGateway {
         underOdds: match.under,
         playerName: normalizedName,
         bookmaker: 'The Odds API',
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       };
     }
 
@@ -423,11 +422,11 @@ export class OddsGatewayImpl implements OddsGateway {
     return null;
   }
 
-  async getTeamPointsLine(teamId: string, gameId: string): Promise<TeamPointsLine | null> {
+  async getTeamPointsLine(_teamId: string, _gameId: string): Promise<TeamPointsLine | null> {
     return null;
   }
 
-  async getGameOdds(gameId: string): Promise<{ homeSpread: number; awaySpread: number; overUnder: number } | null> {
+  async getGameOdds(_gameId: string): Promise<{ homeSpread: number; awaySpread: number; overUnder: number } | null> {
     return null;
   }
 }

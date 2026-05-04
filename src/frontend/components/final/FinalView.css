@@ -209,17 +209,38 @@
 }
 
 .boxscore-table .player-cell {
+  padding: 0.5rem;
+}
+
+.boxscore-table .player-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.boxscore-table .player-img-mini {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.boxscore-table .player-info-stacked {
   display: flex;
   flex-direction: column;
 }
 
 .boxscore-table .player-name {
   font-weight: 500;
+  font-size: 0.85rem;
 }
 
 .boxscore-table .player-pos {
   color: rgba(255, 255, 255, 0.4);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
 }
 
 .boxscore-table .pts-cell {

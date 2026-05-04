@@ -49,7 +49,27 @@ export async function getPlayerLast5Points(athleteId: string): Promise<number[]>
       return isNaN(val) ? 0 : val;
     });
   } catch (error) {
-    logger.error(DataSource.ESPN, 'getPlayerLast5Points', athleteId, error);
+    logger.error(DataSource.ESPN, 'getPlayerLast5Points', athleteId, error as any);
     return [];
+  }
+}
+
+export async function getESPNPlayerProfile(athleteId: string): Promise<any> {
+  const url = `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${athleteId}`;
+  try {
+    return await httpClient.fetch<any>(DataSource.ESPN, url);
+  } catch (error) {
+    logger.error(DataSource.ESPN, 'getESPNPlayerProfile', athleteId, error as any);
+    return null;
+  }
+}
+
+export async function getESPNPlayerGamelog(athleteId: string): Promise<any> {
+  const url = `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${athleteId}/gamelog`;
+  try {
+    return await httpClient.fetch<any>(DataSource.ESPN, url);
+  } catch (error) {
+    logger.error(DataSource.ESPN, 'getESPNPlayerGamelog', athleteId, error as any);
+    return null;
   }
 }

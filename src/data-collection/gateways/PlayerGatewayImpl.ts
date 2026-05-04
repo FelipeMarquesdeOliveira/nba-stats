@@ -1,7 +1,7 @@
 
 import { PlayerGateway, PlayerStats } from '@domain/types';
 import { getPlayerLast5Points } from '../adapters/ESPN/athlete';
-import { cache, CacheKeys, DataSource, logger } from '../infrastructure';
+import { cache, DataSource, logger } from '../infrastructure';
 
 export class PlayerGatewayImpl implements PlayerGateway {
   async getPlayerLast5Stats(playerId: string): Promise<PlayerStats | null> {
@@ -28,7 +28,7 @@ export class PlayerGatewayImpl implements PlayerGateway {
       cache.set(cacheKey, stats, DataSource.ESPN);
       return stats;
     } catch (error) {
-      logger.error(DataSource.ESPN, 'getPlayerLast5Stats', playerId, error);
+      logger.error(DataSource.ESPN, 'getPlayerLast5Stats', playerId, error as any);
       return null;
     }
   }

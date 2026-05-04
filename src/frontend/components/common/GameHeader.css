@@ -1,0 +1,185 @@
+.game-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-8);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-2xl);
+  backdrop-filter: blur(20px);
+  margin-bottom: var(--space-8);
+}
+
+.gh-team {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex: 1;
+}
+
+.gh-team.home {
+  justify-content: flex-end;
+}
+
+.gh-logo {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 15px rgba(0,0,0,0.4));
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.gh-team:hover .gh-logo {
+  opacity: 1;
+  transform: scale(1.1) rotate(5deg);
+}
+
+.gh-team.home:hover .gh-logo {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.gh-team-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.gh-abbr {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.04em;
+}
+
+.gh-score {
+  font-family: var(--font-mono);
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.winner .gh-score {
+  color: var(--color-success);
+}
+
+.gh-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-8);
+}
+
+.gh-pill {
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.1em;
+}
+
+.pregame-pill {
+  background: var(--bg-accent-subtle);
+  color: var(--color-accent);
+}
+
+.live-pill {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.final-pill {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.gh-matchup-text {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--text-muted);
+}
+
+.gh-details, .gh-clock-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.gh-divider {
+  opacity: 0.3;
+}
+
+.gh-clock-info .period {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.gh-clock-info .time {
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-broadcaster {
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 768px) {
+  .game-header-container {
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+  .gh-team {
+    width: 100%;
+    justify-content: center;
+  }
+  .gh-team.home {
+    justify-content: center;
+    flex-direction: row-reverse;
+  }
+  .gh-logo {
+    width: 60px;
+    height: 60px;
+  }
+  .gh-abbr {
+    font-size: 2rem;
+  }
+  .gh-score {
+    font-size: 2.5rem;
+  }
+  .gh-center {
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    width: 100%;
+  }
+  .gh-matchup-text {
+    display: none;
+  }
+}

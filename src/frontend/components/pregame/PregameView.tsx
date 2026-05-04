@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Game,
   InjuryStatus,
   AvailabilityItem,
   PlayerStats,
   PlayerPointsLine,
-  Team,
-  GameStatus
+  Team
 } from '@domain/types';
 import {
   getGameStarters,
@@ -15,6 +15,7 @@ import {
   oddsGateway
 } from '@data-collection';
 import { useInjuries } from '@frontend/hooks/useInjuries';
+import { GameHeader } from '../common/GameHeader';
 import './PregameView.css';
 
 interface PregameViewProps {
@@ -26,24 +27,8 @@ interface PregameViewProps {
  * Check if a team is playing back-to-back (B2B)
  * Returns true if the team played a game yesterday
  */
-function isBackToBack(teamId: string, gameDate: string, recentGames: Game[]): boolean {
-  const gameTime = new Date(gameDate).getTime();
-  const oneDayMs = 24 * 60 * 60 * 1000;
-
-  // Check if team played on previous day
-  return recentGames.some(g => {
-    if (g.id.includes(teamId)) return false; // Skip same game
-    const prevGameTime = new Date(g.scheduledAt).getTime();
-    const daysDiff = (gameTime - prevGameTime) / oneDayMs;
-    return daysDiff >= 0.9 && daysDiff <= 1.1; // ~1 day difference
-  });
-}
-
-function PregameView({ game, recentGames = [] }: PregameViewProps) {
-  const { injuries, loading, error, refetch, isStale, lastUpdated, circuitOpen } = useInjuries();
-
-  const homeB2B = isBackToBack(game.homeTeam.id, game.scheduledAt, recentGames);
-  const awayB2B = isBackToBack(game.awayTeam.id, game.scheduledAt, recentGames);
+function PregameView({ game }: PregameViewProps) {
+  const { injuries, loading, refetch, isStale, lastUpdated, circuitOpen } = useInjuries();
 
   // Filtro de lesões mais rigoroso para evitar jogadores de outros times
   const filterInjuries = (team: Game['homeTeam']) => {
@@ -116,25 +101,7 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
         </div>
       )}
 
-      <div className="pregame-hero">
-        <div className="matchup-header">
-          <div className="game-status-pill">PRÉ-JOGO</div>
-          <div className="matchup-info">
-            <h2>{game.awayTeam.abbreviation} vs {game.homeTeam.abbreviation}</h2>
-            <div className="matchup-details">
-              <span>{new Date(game.scheduledAt).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
-              <span className="divider">|</span>
-              <span>{new Date(game.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-              {game.broadcaster && (
-                <>
-                  <span className="divider">|</span>
-                  <span className="broadcaster-tag">{game.broadcaster}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <GameHeader game={game} status="pregame" />
 
       <div className="pregame-grid">
         <div className="availability-report-card">
@@ -145,12 +112,12 @@ function PregameView({ game, recentGames = [] }: PregameViewProps) {
 
           <div className="report-columns">
             <TeamInjuryList
-              teamName={game.awayTeam.shortName}
+              team={game.awayTeam}
               injuries={awayInjuries}
             />
             <div className="vertical-divider"></div>
             <TeamInjuryList
-              teamName={game.homeTeam.shortName}
+              team={game.homeTeam}
               injuries={homeInjuries}
             />
           </div>
@@ -178,7 +145,6 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
     home: { player: { id: string, name: string, jersey?: string }, stats: PlayerStats | null, prop: PlayerPointsLine | null }[]
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let ignore = false;
@@ -186,8 +152,8 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
     async function loadData() {
       setLoading(true);
       try {
-        let awayStarters: { id: string, name: string, jersey?: string }[] = [];
-        let homeStarters: { id: string, name: string, jersey?: string }[] = [];
+        let awayStarters: { id: string, name: string, jersey?: string, position?: string, imageUrl?: string }[] = [];
+        let homeStarters: { id: string, name: string, jersey?: string, position?: string, imageUrl?: string }[] = [];
 
         // Try current game starters first
         const currentStarters = await getGameStarters(gameId);
@@ -256,7 +222,7 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
 
     loadData();
     return () => { ignore = true; };
-  }, [gameId, homeTeam.id, awayTeam.id, refreshKey]);
+  }, [gameId, homeTeam.id, awayTeam.id]);
 
   if (loading) return (
     <div className="props-side-by-side loading-state">
@@ -286,10 +252,11 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
             {data.away.map((item, idx) => (
               <PlayerPropRow
                 key={idx}
+                playerId={item.player.id}
                 name={item.player.name}
-                number={item.player.jersey || ""}
                 last5={item.stats?.last5 || []}
                 line={item.prop?.line || 0}
+                gameId={gameId}
               />
             ))}
           </tbody>
@@ -315,10 +282,11 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
             {data.home.map((item, idx) => (
               <PlayerPropRow
                 key={idx}
+                playerId={item.player.id}
                 name={item.player.name}
-                number={item.player.jersey || ""}
                 last5={item.stats?.last5 || []}
                 line={item.prop?.line || 0}
+                gameId={gameId}
               />
             ))}
           </tbody>
@@ -328,16 +296,35 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
   );
 }
 
-function PlayerPropRow({ name, number, last5, line }: { name: string; number: string; last5: number[]; line: number }) {
+function PlayerPropRow({ playerId, imageUrl, name, last5, line, gameId }: { playerId: string; imageUrl?: string; name: string; last5: number[]; line: number; gameId?: string }) {
+  const navigate = useNavigate();
   const avg = last5.reduce((a, b) => a + b, 0) / last5.length;
   // Signal value only if average is at least 0.5 points above the line
   const isAvgHigher = avg >= (line + 0.5);
 
+  const headshotUrl = imageUrl || `https://a.espncdn.com/i/headshots/nba/players/full/${playerId}.png`;
+
+  const handlePlayerClick = () => {
+    navigate(`/players/${playerId}${gameId ? `?gameId=${gameId}` : ''}`);
+  };
+
   return (
     <tr>
       <td>
-        <div className="prop-player-cell-mini">
-          <div className="p-avatar-mini">{number}</div>
+        <div 
+          className="prop-player-cell-mini" 
+          onClick={handlePlayerClick}
+          style={{ cursor: 'pointer' }}
+          title={`Ver perfil de ${name}`}
+        >
+          <img 
+            src={headshotUrl} 
+            alt={name} 
+            className="p-avatar-mini"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://www.nba.com/assets/img/default-player-headshot.png';
+            }}
+          />
           <div className="p-info">
             <span className="p-name-mini">{name}</span>
             <div className="p-last-5-mini">
@@ -360,47 +347,14 @@ function PlayerPropRow({ name, number, last5, line }: { name: string; number: st
   );
 }
 
-interface TeamCardProps {
-  team: Game['homeTeam'];
-  record?: string;
-  isB2B: boolean;
-  side: 'home' | 'away';
-}
 
-function TeamCard({ team, record, isB2B, side }: TeamCardProps) {
-  return (
-    <div className={`team-premium-card ${side}`}>
-      <div className="team-brand">
-        <span className="team-abbr-large">{team.abbreviation}</span>
-        <div className="team-name-group">
-          <span className="team-full-name">{team.name}</span>
-          <span className="team-location">{side === 'home' ? 'Mandante' : 'Visitante'}</span>
-        </div>
-      </div>
-
-      <div className="team-stats-row">
-        {record && (
-          <div className="stat-pill">
-            <span className="label">Campanha:</span>
-            <span className="value">{record}</span>
-          </div>
-        )}
-        {isB2B && (
-          <div className="stat-pill b2b">
-            <span className="value">Back-to-Back</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 interface TeamAvailabilityProps {
-  teamName: string;
+  team: Team;
   injuries: AvailabilityItem[];
 }
 
-function TeamInjuryList({ teamName, injuries }: TeamAvailabilityProps) {
+function TeamInjuryList({ team, injuries }: TeamAvailabilityProps) {
   const hasInjuries = injuries.length > 0;
 
   const grouped = {
@@ -412,7 +366,10 @@ function TeamInjuryList({ teamName, injuries }: TeamAvailabilityProps) {
 
   return (
     <div className="injury-team-list">
-      <h4>{teamName}</h4>
+      <div className="team-header-with-logo">
+        <img src={team.logoUrl} alt="" className="team-mini-logo" />
+        <h4>{team.shortName}</h4>
+      </div>
       {!hasInjuries ? (
         <div className="clean-status">
           <span className="clean-icon">✅</span>
@@ -431,13 +388,25 @@ function TeamInjuryList({ teamName, injuries }: TeamAvailabilityProps) {
 }
 
 function InjuryItem({ item, status }: { item: AvailabilityItem, status: string }) {
+  const headshotUrl = item.player.imageUrl || `https://a.espncdn.com/i/headshots/nba/players/full/${item.player.id}.png`;
+
   return (
     <div className={`premium-injury-item ${status.toLowerCase()}`}>
-      <div className="injury-main">
-        <span className="player-name">{item.player.name}</span>
-        <span className="status-badge">{status}</span>
+      <img 
+        src={headshotUrl} 
+        alt={item.player.name} 
+        className="player-headshot-mini"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = 'https://www.nba.com/assets/img/default-player-headshot.png';
+        }}
+      />
+      <div className="injury-content">
+        <div className="injury-main">
+          <span className="player-name">{item.player.name}</span>
+          <span className="status-badge">{status}</span>
+        </div>
+        {item.reason && <p className="injury-detail">{item.reason}</p>}
       </div>
-      {item.reason && <p className="injury-detail">{item.reason}</p>}
     </div>
   );
 }

@@ -68,10 +68,10 @@ export async function getGameStarters(gameId: string): Promise<{ teamId: string,
     const data = await httpClient.fetch<any>(DataSource.ESPN, url);
     if (!data.boxscore || !data.boxscore.players) return [];
     
-    return data.boxscore.players.map(teamGroup => {
+    return data.boxscore.players.map((teamGroup: any) => {
       const athletes = teamGroup.statistics[0].athletes;
       // Filter for starters or just take top 5 if starters flag is missing in pre-game
-      const starters = athletes.filter(a => a.starter).map(a => ({
+      const starters = athletes.filter((a: any) => a.starter).map((a: any) => ({
         id: a.athlete.id,
         name: a.athlete.displayName,
         jersey: a.athlete.jersey,
@@ -79,7 +79,7 @@ export async function getGameStarters(gameId: string): Promise<{ teamId: string,
       }));
       
       // If no starters marked, take top 5
-      const finalPlayers = starters.length > 0 ? starters : athletes.slice(0, 5).map(a => ({
+      const finalPlayers = starters.length > 0 ? starters : athletes.slice(0, 5).map((a: any) => ({
         id: a.athlete.id,
         name: a.athlete.displayName,
         jersey: a.athlete.jersey,
@@ -92,7 +92,7 @@ export async function getGameStarters(gameId: string): Promise<{ teamId: string,
       };
     });
   } catch (error) {
-    logger.error(DataSource.ESPN, 'getGameStarters', gameId, error);
+    logger.error(DataSource.ESPN, 'getGameStarters', gameId, error as any);
     return [];
   }
 }
@@ -102,7 +102,7 @@ export async function getTeamLastGameStarters(teamId: string): Promise<{ id: str
   
   try {
     const scheduleData = await httpClient.fetch<any>(DataSource.ESPN, url);
-    const completedGames = scheduleData.events?.filter(e => e.competitions[0].status.type.state === 'post') || [];
+    const completedGames = scheduleData.events?.filter((e: any) => e.competitions[0].status.type.state === 'post') || [];
     if (completedGames.length === 0) return [];
     
     // Get the most recent game ID
@@ -114,18 +114,18 @@ export async function getTeamLastGameStarters(teamId: string): Promise<{ id: str
     
     if (!summaryData.boxscore || !summaryData.boxscore.players) return [];
     
-    const teamGroup = summaryData.boxscore.players.find(tg => tg.team.id === teamId);
+    const teamGroup = summaryData.boxscore.players.find((tg: any) => tg.team.id === teamId);
     if (!teamGroup) return [];
     
     const athletes = teamGroup.statistics[0].athletes;
-    return athletes.filter(a => a.starter).map(a => ({
+    return athletes.filter((a: any) => a.starter).map((a: any) => ({
       id: a.athlete.id,
       name: a.athlete.displayName,
       jersey: a.athlete.jersey,
       position: a.athlete.position?.abbreviation || 'N/A'
     }));
   } catch (error) {
-    logger.error(DataSource.ESPN, 'getTeamLastGameStarters', teamId, error);
+    logger.error(DataSource.ESPN, 'getTeamLastGameStarters', teamId, error as any);
     return [];
   }
 }

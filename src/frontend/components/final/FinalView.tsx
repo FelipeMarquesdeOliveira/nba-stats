@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Game, PeriodType } from '@domain/types';
 import { useLiveGame } from '@frontend/hooks/useLiveGame';
+import { GameHeader } from '../common/GameHeader';
 import './FinalView.css';
-import { PlayerHoverCard } from '../common/PlayerHoverCard';
 
 interface FinalViewProps {
   game: Game;
@@ -15,7 +15,7 @@ interface SelectedPlayer {
 }
 
 function FinalView({ game }: FinalViewProps) {
-  const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
+  const navigate = useNavigate();
   const { boxscore, loading, error, refetch, isStale, lastUpdated, circuitOpen } = useLiveGame(
     game.id,
     'final'
@@ -71,30 +71,16 @@ function FinalView({ game }: FinalViewProps) {
     );
   }
 
-  const fgPct = (made: number, attempted: number) => {
-    if (attempted === 0) return '0.0';
-    return ((made / attempted) * 100).toFixed(1);
-  };
 
-  const homeStats = boxscore.teamStats?.[game.homeTeam.abbreviation] || {};
-  const awayStats = boxscore.teamStats?.[game.awayTeam.abbreviation] || {};
+
   const showStaleIndicator = isStale && boxscore;
 
   // Calculate win margin
   const margin = boxscore.homeScore - boxscore.awayScore;
   const winner = margin > 0 ? game.homeTeam : margin < 0 ? game.awayTeam : null;
-  const absMargin = Math.abs(margin);
 
   return (
     <div className="final-view animate-fadeIn">
-      {selectedPlayer && (
-        <PlayerHoverCard 
-          playerId={selectedPlayer.id}
-          playerName={selectedPlayer.name}
-          position={selectedPlayer.position}
-          onClose={() => setSelectedPlayer(null)}
-        />
-      )}
 
       {showStaleIndicator && (
         <div className="stale-indicator">
@@ -109,27 +95,13 @@ function FinalView({ game }: FinalViewProps) {
         </div>
       )}
 
-      <div className="final-scoreboard">
-        <div className="final-team away">
-          <span className="team-abbr">{game.awayTeam.abbreviation}</span>
-          <span className="team-score">{boxscore.awayScore}</span>
-          <span className="team-name">{game.awayTeam.name}</span>
-        </div>
-
-        <div className="final-center">
-          <div className="final-label">FINAL</div>
-          {winner && absMargin > 0 && (
-            <div className="win-margin">{winner.abbreviation} +{absMargin}</div>
-          )}
-          {game.broadcaster && <div className="final-venue">{game.broadcaster}</div>}
-        </div>
-
-        <div className="final-team home">
-          <span className="team-abbr">{game.homeTeam.abbreviation}</span>
-          <span className="team-score">{boxscore.homeScore}</span>
-          <span className="team-name">{game.homeTeam.name}</span>
-        </div>
-      </div>
+      <GameHeader 
+        game={game} 
+        status="final" 
+        homeScore={boxscore.homeScore} 
+        awayScore={boxscore.awayScore}
+        winnerId={winner?.id}
+      />
 
       {boxscore.quarterScores && boxscore.quarterScores.length > 0 && (
         <QuarterByQuarter
@@ -142,8 +114,8 @@ function FinalView({ game }: FinalViewProps) {
       <div className="boxscore-section">
         <h3>Box Score</h3>
         <div className="boxscore-grid">
-          <TeamBoxScore team={game.awayTeam} players={boxscore.awayTeam.players} onPlayerClick={setSelectedPlayer} />
-          <TeamBoxScore team={game.homeTeam} players={boxscore.homeTeam.players} onPlayerClick={setSelectedPlayer} />
+          <TeamBoxScore team={game.awayTeam} players={boxscore.awayTeam.players} onPlayerClick={(p) => navigate(`/players/${p.id}?gameId=${game.id}`)} />
+          <TeamBoxScore team={game.homeTeam} players={boxscore.homeTeam.players} onPlayerClick={(p) => navigate(`/players/${p.id}?gameId=${game.id}`)} />
         </div>
       </div>
 
@@ -356,17 +328,29 @@ function TeamBoxScore({ team, players, onPlayerClick }: TeamBoxScoreProps) {
           {sortedPlayers.map((player) => (
             <tr key={player.player.id}>
               <td className="player-cell">
-                <span 
-                  className="player-name interactive" 
-                  onClick={() => onPlayerClick({
-                    id: player.player.id,
-                    name: player.player.name,
-                    position: player.displayPos
-                  })}
-                >
-                  {player.player.name || 'Jogador indisponível'}
-                </span>
-                <span className="player-pos">{player.displayPos}</span>
+                <div className="player-identity">
+                  <img 
+                    src={`https://a.espncdn.com/i/headshots/nba/players/full/${player.player.id}.png`} 
+                    alt={player.player.name} 
+                    className="player-img-mini"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://www.nba.com/assets/img/default-player-headshot.png';
+                    }}
+                  />
+                  <div className="player-info-stacked">
+                    <span 
+                      className="player-name interactive" 
+                      onClick={() => onPlayerClick({
+                        id: player.player.id,
+                        name: player.player.name,
+                        position: player.displayPos
+                      })}
+                    >
+                      {player.player.name || 'Jogador indisponível'}
+                    </span>
+                    <span className="player-pos">{player.displayPos}</span>
+                  </div>
+                </div>
               </td>
               <td className="pts-cell">{player.points ?? 0}</td>
               <td>{player.rebounds ?? 0}</td>
