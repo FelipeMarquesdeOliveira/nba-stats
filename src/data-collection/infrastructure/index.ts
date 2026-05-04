@@ -17,3 +17,5 @@ export type { HttpClientConfig, RetryConfig } from './HttpClient';
 
 export { computeOnCourt, toOnCourtStatusMap } from './onCourtTracker';
 export type { OnCourtResult } from './onCourtTracker';
+
+export { lineStorage } from './lineStorage';

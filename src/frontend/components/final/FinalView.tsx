@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Game, PeriodType } from '@domain/types';
 import { useLiveGame } from '@frontend/hooks/useLiveGame';
+import { lineStorage } from '@data-collection';
 import { GameHeader } from '../common/GameHeader';
 import './FinalView.css';
 
@@ -79,6 +81,8 @@ function FinalView({ game }: FinalViewProps) {
   const margin = boxscore.homeScore - boxscore.awayScore;
   const winner = margin > 0 ? game.homeTeam : margin < 0 ? game.awayTeam : null;
 
+  const initialLines = useMemo(() => lineStorage.getInitialLines(game.id), [game.id]);
+
   return (
     <div className="final-view animate-fadeIn">
 
@@ -114,8 +118,8 @@ function FinalView({ game }: FinalViewProps) {
       <div className="boxscore-section">
         <h3>Box Score</h3>
         <div className="boxscore-grid">
-          <TeamBoxScore team={game.awayTeam} players={boxscore.awayTeam.players} onPlayerClick={(p) => navigate(`/players/${p.id}?gameId=${game.id}`)} />
-          <TeamBoxScore team={game.homeTeam} players={boxscore.homeTeam.players} onPlayerClick={(p) => navigate(`/players/${p.id}?gameId=${game.id}`)} />
+          <TeamBoxScore team={game.awayTeam} players={boxscore.awayTeam.players} onPlayerClick={(p) => navigate(`/players/${p.id}?gameId=${game.id}`)} lines={initialLines} />
+          <TeamBoxScore team={game.homeTeam} players={boxscore.homeTeam.players} onPlayerClick={(p) => navigate(`/players/${p.id}?gameId=${game.id}`)} lines={initialLines} />
         </div>
       </div>
 
@@ -161,6 +165,7 @@ interface TeamBoxScoreProps {
     isStarter?: boolean;
   }>;
   onPlayerClick: (player: SelectedPlayer) => void;
+  lines: Record<string, any>;
 }
 
 interface QuarterByQuarterProps {
@@ -214,7 +219,7 @@ function QuarterByQuarter({ quarterScores, homeAbbr, awayAbbr }: QuarterByQuarte
   );
 }
 
-function TeamBoxScore({ team, players, onPlayerClick }: TeamBoxScoreProps) {
+function TeamBoxScore({ team, players, onPlayerClick, lines }: TeamBoxScoreProps) {
   const starters = [...players].filter((p) => p.isStarter);
   
   // Slots preenchidos
@@ -315,6 +320,7 @@ function TeamBoxScore({ team, players, onPlayerClick }: TeamBoxScoreProps) {
         <thead>
           <tr>
             <th>Player</th>
+            <th>Linha PTS</th>
             <th>PTS</th>
             <th>REB</th>
             <th>AST</th>
@@ -352,8 +358,28 @@ function TeamBoxScore({ team, players, onPlayerClick }: TeamBoxScoreProps) {
                   </div>
                 </div>
               </td>
-              <td className="pts-cell">{player.points ?? 0}</td>
-              <td>{player.rebounds ?? 0}</td>
+              <td className="line-cell text-center">
+                {lines[player.player.id]?.line !== undefined ? (
+                  <span className="initial-line-value" style={{color: 'var(--text-muted)'}}>{lines[player.player.id].line}</span>
+                ) : (
+                  <span className="no-line" style={{opacity: 0.3}}>—</span>
+                )}
+              </td>
+              <td className="pts-cell text-center" style={{fontWeight: 'bold', fontSize: '1.1em'}}>
+                {player.points ?? 0}
+                {lines[player.player.id]?.line !== undefined && (
+                  <span style={{
+                    marginLeft: '6px', 
+                    fontSize: '0.8em',
+                    color: (player.points ?? 0) > lines[player.player.id].line ? '#4ade80' : 
+                           (player.points ?? 0) < lines[player.player.id].line ? '#f87171' : '#9ca3af'
+                  }}>
+                    {(player.points ?? 0) > lines[player.player.id].line ? '▲' : 
+                     (player.points ?? 0) < lines[player.player.id].line ? '▼' : '='}
+                  </span>
+                )}
+              </td>
+              <td className="text-center">{player.rebounds ?? 0}</td>
               <td>{player.assists ?? 0}</td>
               <td>{((player.fieldGoalPct ?? 0) * 100).toFixed(1)}%</td>
               <td>{((player.threePointPct ?? 0) * 100).toFixed(1)}%</td>

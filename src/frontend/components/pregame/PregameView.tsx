@@ -12,7 +12,8 @@ import {
   getGameStarters,
   getTeamLastGameStarters,
   playerGateway,
-  oddsGateway
+  oddsGateway,
+  lineStorage
 } from '@data-collection';
 import { useInjuries } from '@frontend/hooks/useInjuries';
 import { GameHeader } from '../common/GameHeader';
@@ -212,6 +213,15 @@ function PlayerPropAnalysis({ gameId, homeTeam, awayTeam }: { gameId: string, ho
 
         if (!ignore) {
           setData({ away: awayData, home: homeData });
+
+          // Phase 3: Persistência de linhas iniciais
+          const linesToSave = [...awayData, ...homeData]
+            .map(d => d.prop)
+            .filter(prop => prop !== null && prop !== undefined) as any[];
+            
+          if (linesToSave.length > 0) {
+            lineStorage.saveInitialLines(gameId, linesToSave);
+          }
         }
       } catch (e) {
         console.error('Error loading prop data:', e);
