@@ -190,14 +190,31 @@ export class OddsGatewayImpl implements OddsGateway {
   }
 
   private async fetchPlayerProps(oddsEventId: string): Promise<CachedProps> {
-    const url = `${ODDS_API_BASE}/events/${oddsEventId}/odds?regions=us&markets=player_points&oddsFormat=decimal`;
+    // Fetch from us, eu, and uk regions for maximum coverage
+    // Note: each region in a single request counts as 1 credit, not 3
+    const url = `${ODDS_API_BASE}/events/${oddsEventId}/odds?regions=us,eu,uk&markets=player_points&oddsFormat=decimal`;
     const res = await this.fetchWithRetry(url);
     if (!res) return {};
 
     const data = await res.json();
     const props: CachedProps = {};
 
-    const priorityBookmakers = ['draftkings', 'fanduel', 'pinnacle', 'betmgm', 'caesars', 'bovada'];
+    // Priority: Pinnacle (sharpest, closest to Parimatch), then major US books, then EU
+    const priorityBookmakers = [
+      'pinnacle',       // Reference market — closest to Parimatch lines
+      '1xbet',          // EU sharp book
+      'marathonbet',    // EU sharp book
+      'draftkings',     // US major
+      'fanduel',        // US major
+      'betmgm',         // US major
+      'caesars',        // US major
+      'bovada',         // US major
+      'williamhill',    // UK/EU major
+      'bet365',         // UK/AU major
+      'betfair_ex_eu',  // Exchange (true market)
+      'betsson',        // EU
+      'unibet_eu',      // EU
+    ];
     const sortedBookmakers = (data.bookmakers || []).sort((a: any, b: any) => {
       const idxA = priorityBookmakers.indexOf(a.key);
       const idxB = priorityBookmakers.indexOf(b.key);
@@ -225,7 +242,11 @@ export class OddsGatewayImpl implements OddsGateway {
           }
         }
       }
-      if (Object.keys(props).length > 0) break;
+      // Use the first bookmaker that has data (highest priority)
+      if (Object.keys(props).length > 0) {
+        console.log(`📊 [ODDS] Usando bookmaker: ${bookmaker.title} (${bookmaker.key})`);
+        break;
+      }
     }
 
     return props;
