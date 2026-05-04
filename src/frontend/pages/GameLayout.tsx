@@ -52,7 +52,27 @@ function GameLayout() {
 
   useEffect(() => {
     fetchGames();
-  }, [fetchGames]);
+
+    // Auto-poll sidebar scores every 10s if there are live games
+    const interval = setInterval(async () => {
+      try {
+        const freshGames = await gameGateway.getGamesForDate(resolvedDate);
+        setGames(freshGames);
+        
+        // Also update selectedGame if it's live and in the list
+        if (selectedGame && selectedGame.status === GameStatus.LIVE) {
+          const updatedSelected = freshGames.find(g => g.id === selectedGame.id);
+          if (updatedSelected) {
+            setSelectedGame(updatedSelected);
+          }
+        }
+      } catch (_) {
+        // Silent fail — sidebar keeps showing stale data
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchGames, resolvedDate]);
 
   useEffect(() => {
     if (location.state?.game) {

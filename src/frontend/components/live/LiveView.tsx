@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
 import { Game, GameStatus, OnCourtStatus, BoxScorePlayer } from '@domain/types';
 import { useLiveGame } from '@frontend/hooks/useLiveGame';
 import { oddsGateway, OddsGatewayImpl } from '@data-collection';
@@ -23,33 +23,28 @@ interface LiveViewProps {
   game: Game;
 }
 
-function formatTimeAgo(date: Date | null): string {
-  if (!date) return '';
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 5) return 'agora';
-  if (seconds < 60) return `há ${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  return `há ${minutes}min`;
-}
-
 function LiveView({ game }: LiveViewProps) {
   const gameStatus: 'live' | 'final' | 'scheduled' =
     game.status === GameStatus.LIVE ? 'live' :
     game.status === GameStatus.FINAL ? 'final' : 'scheduled';
 
-  const { boxscore, loading, error, refetch, isStale, lastUpdated, circuitOpen, isManualRefreshing } = useLiveGame(game.id, gameStatus);
+  const { boxscore, loading } = useLiveGame(game.id, gameStatus);
   
   // Live props state
   const [liveProps, setLiveProps] = useState<Record<string, { line: number; over: number; under: number }>>({});
-  const [oddsTimer, setOddsTimer] = useState(30); // Countdown for odds update
+  const [oddsTimer, setOddsTimer] = useState(30);
   const prevPropsRef = useRef<Record<string, number>>({});
   const prevOnCourtRef = useRef<Record<string, OnCourtStatus>>({});
   const [notifications, setNotifications] = useState<LiveNotification[]>([]);
+  
+  // Score animation tracking
+  const prevScoreRef = useRef<{ home: number; away: number }>({ home: 0, away: 0 });
+  const [homeScoreFlash, setHomeScoreFlash] = useState(false);
+  const [awayScoreFlash, setAwayScoreFlash] = useState(false);
 
-  // Odds Countdown Effect
+  // Odds Countdown Effect — lightweight 1s tick
   useEffect(() => {
     if (game.status !== GameStatus.LIVE) return;
-    
     const timer = setInterval(() => {
       setOddsTimer(prev => (prev <= 1 ? 30 : prev - 1));
     }, 1000);
@@ -60,13 +55,31 @@ function LiveView({ game }: LiveViewProps) {
   useEffect(() => {
     const isLive = game.status === GameStatus.LIVE;
     (oddsGateway as OddsGatewayImpl).setLiveMode(isLive);
-    // Register team names so the gateway maps this ESPN game to the right Odds API event
     (oddsGateway as OddsGatewayImpl).setGameContext(game.id, game.homeTeam.name, game.awayTeam.name);
     
     return () => {
       (oddsGateway as OddsGatewayImpl).setLiveMode(false);
     };
   }, [game.status, game.id, game.homeTeam.name, game.awayTeam.name]);
+
+  // ─── Score Change Animation ─────────────────────────────────
+  useEffect(() => {
+    if (!boxscore) return;
+
+    const prevHome = prevScoreRef.current.home;
+    const prevAway = prevScoreRef.current.away;
+
+    if (boxscore.homeScore > prevHome && prevHome > 0) {
+      setHomeScoreFlash(true);
+      setTimeout(() => setHomeScoreFlash(false), 1200);
+    }
+    if (boxscore.awayScore > prevAway && prevAway > 0) {
+      setAwayScoreFlash(true);
+      setTimeout(() => setAwayScoreFlash(false), 1200);
+    }
+
+    prevScoreRef.current = { home: boxscore.homeScore, away: boxscore.awayScore };
+  }, [boxscore?.homeScore, boxscore?.awayScore]);
 
   // ─── Track Substitutions ────────────────────────────────────
   useEffect(() => {
@@ -81,7 +94,6 @@ function LiveView({ game }: LiveViewProps) {
       const newStatus = player.onCourtStatus;
 
       if (prevStatus !== undefined && prevStatus !== newStatus) {
-        // Mudança de status detectada
         if (newStatus === OnCourtStatus.HIGH_CONFIDENCE) {
           newNotifications.push({
             id: ++notificationId,
@@ -111,7 +123,7 @@ function LiveView({ game }: LiveViewProps) {
     }
   }, [boxscore]);
 
-  // ─── Fetch Props ───────────────────────────────────────────
+  // ─── Fetch Props (Odds) ────────────────────────────────────
   useEffect(() => {
     if (!boxscore || game.status !== GameStatus.LIVE) return;
 
@@ -120,24 +132,19 @@ function LiveView({ game }: LiveViewProps) {
     async function fetchOnCourtProps() {
       if (!boxscore) return;
 
-      // Pause polling during Halftime to save credits
+      // Pause during Halftime
       const isHalftime = boxscore.clock?.toLowerCase().includes('half') || 
                          boxscore.clock?.toLowerCase().includes('ht');
       
       if (isHalftime) {
-        if (Object.keys(liveProps).length > 0) {
-          console.log('⏸️ [ODDS] Halftime — Polling pausado para economizar créditos');
-        }
+        console.log('⏸️ [ODDS] Halftime — Polling pausado');
         return;
       }
 
       const allPlayers = [...boxscore.homeTeam.players, ...boxscore.awayTeam.players];
-      
-      let playersToFetch = allPlayers;
-
       const newProps: Record<string, { line: number; over: number; under: number }> = {};
       
-      for (const player of playersToFetch) {
+      for (const player of allPlayers) {
         if (ignore) return;
         try {
           const prop = await oddsGateway.getPlayerPointsLine(player.player.id, game.id, player.player.name);
@@ -170,22 +177,21 @@ function LiveView({ game }: LiveViewProps) {
       }
 
       prevPropsRef.current = prevLines;
-      
-      // Update props (merge with old to avoid disappearing lines if fetch fails for some)
       setLiveProps(prev => ({ ...prev, ...newProps }));
 
       if (lineNotifications.length > 0) {
         setNotifications(prev => [...lineNotifications, ...prev].slice(0, 10));
       }
 
-      setOddsTimer(30); // Reset timer after fetch
+      setOddsTimer(30);
     }
 
     fetchOnCourtProps();
-    const interval = setInterval(fetchOnCourtProps, 30 * 1000); // 30s — synced with CACHE_LIVE
+    const interval = setInterval(fetchOnCourtProps, 30 * 1000);
     return () => { ignore = true; clearInterval(interval); };
   }, [boxscore, game.status, game.id]);
 
+  // Auto-dismiss notifications
   useEffect(() => {
     if (notifications.length === 0) return;
     const timer = setTimeout(() => {
@@ -197,12 +203,11 @@ function LiveView({ game }: LiveViewProps) {
   if (loading) return <div className="live-view loading">Carregando...</div>;
   if (!boxscore) return <div className="live-view no-data">Sem dados.</div>;
 
+  // Sort players: on-court first, then starters, then by points
   const sortPlayers = (players: BoxScorePlayer[]) => {
     return [...players].sort((a, b) => {
-      // DNP should always be at the bottom
       if (a.onCourtStatus === OnCourtStatus.DNP && b.onCourtStatus !== OnCourtStatus.DNP) return 1;
       if (b.onCourtStatus === OnCourtStatus.DNP && a.onCourtStatus !== OnCourtStatus.DNP) return -1;
-      
       if (a.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && b.onCourtStatus !== OnCourtStatus.HIGH_CONFIDENCE) return -1;
       if (b.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && a.onCourtStatus !== OnCourtStatus.HIGH_CONFIDENCE) return 1;
       if (a.isStarter && !b.isStarter) return -1;
@@ -215,7 +220,7 @@ function LiveView({ game }: LiveViewProps) {
   const awayPlayers = sortPlayers(boxscore.awayTeam.players);
 
   return (
-    <div className="live-container animate-fadeIn">
+    <div className="live-container">
       {/* Notifications Toast */}
       <div className="toast-area">
         {notifications.map(n => (
@@ -231,7 +236,7 @@ function LiveView({ game }: LiveViewProps) {
         ))}
       </div>
 
-      {/* Header Alinhado com o Estilo Premium */}
+      {/* Header */}
       <div className="live-header-card glass">
         <div className="live-status-row">
           <div className="live-badge-pulse">AO VIVO</div>
@@ -245,11 +250,11 @@ function LiveView({ game }: LiveViewProps) {
         <div className="score-main-row">
           <div className="team-score-block">
             <span className="team-abbr">{game.awayTeam.abbreviation}</span>
-            <span className="score-value">{boxscore.awayScore}</span>
+            <span className={`score-value ${awayScoreFlash ? 'score-flash' : ''}`}>{boxscore.awayScore}</span>
           </div>
           <div className="score-divider">VS</div>
           <div className="team-score-block">
-            <span className="score-value">{boxscore.homeScore}</span>
+            <span className={`score-value ${homeScoreFlash ? 'score-flash' : ''}`}>{boxscore.homeScore}</span>
             <span className="team-abbr">{game.homeTeam.abbreviation}</span>
           </div>
         </div>
@@ -287,9 +292,14 @@ function LiveView({ game }: LiveViewProps) {
   );
 }
 
-// ─── Improved Team Table ───────────────────────────────────────
+// ─── Memoized Team Table ───────────────────────────────────────
 
-function LiveTeamTable({ title, players, liveProps, side }: { title: string, players: BoxScorePlayer[], liveProps: any, side: string }) {
+const LiveTeamTable = memo(function LiveTeamTable({ title, players, liveProps, side }: { 
+  title: string; 
+  players: BoxScorePlayer[]; 
+  liveProps: Record<string, { line: number; over: number; under: number }>;
+  side: string;
+}) {
   const onCourtCount = players.filter(p => p.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE).length;
 
   return (
@@ -314,48 +324,63 @@ function LiveTeamTable({ title, players, liveProps, side }: { title: string, pla
             </tr>
           </thead>
           <tbody>
-            {players.map(player => {
-              const prop = liveProps[player.player.id];
-              const line = prop?.line || 0;
-              const remaining = line > 0 ? line - player.points : null;
-              
-              let statusClass = '';
-              if (remaining !== null) {
-                if (remaining <= 3) statusClass = 'hit'; // 2, 3 points remaining is now green
-                else if (remaining <= 4.5) statusClass = 'near';
-                else if (remaining <= 8.5) statusClass = 'mid';
-                else statusClass = 'far';
-              }
-
-              return (
-                <tr key={player.player.id} className={`${player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE ? 'active-row' : ''}`}>
-                  <td className="name-cell">
-                    {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE && <span className="live-dot"></span>}
-                    <span className="p-number">#{player.player.jerseyNumber}</span>
-                    <span className="p-name">{player.player.name}</span>
-                    {player.isStarter && <span className="starter-star">★</span>}
-                  </td>
-                  <td className="val-cell bold">{player.points}</td>
-                  <td className="val-cell">{line > 0 ? line : '—'}</td>
-                  <td className={`val-cell remaining ${statusClass}`}>
-                    {remaining !== null ? (remaining <= 0 ? '✅' : Math.ceil(remaining)) : '—'}
-                  </td>
-                  <td className="val-cell dim">{player.minutesPlayed}</td>
-                  <td className="status-cell">
-                    <span className={`status-pill ${player.onCourtStatus}`}>
-                      {player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE ? 'QUADRA' : 
-                       (player.onCourtStatus === OnCourtStatus.ESTIMATED ? 'ESTIMADO' : 
-                       (player.onCourtStatus === OnCourtStatus.DNP ? 'DNP' : 'BANCO'))}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
+            {players.map(player => (
+              <PlayerRow 
+                key={player.player.id} 
+                player={player} 
+                prop={liveProps[player.player.id]} 
+              />
+            ))}
           </tbody>
         </table>
       </div>
     </div>
   );
-}
+});
+
+// ─── Memoized Player Row ──────────────────────────────────────
+
+const PlayerRow = memo(function PlayerRow({ player, prop }: { 
+  player: BoxScorePlayer; 
+  prop?: { line: number; over: number; under: number };
+}) {
+  const line = prop?.line || 0;
+  const remaining = line > 0 ? line - player.points : null;
+  
+  let statusClass = '';
+  if (remaining !== null) {
+    if (remaining <= 3) statusClass = 'hit';
+    else if (remaining <= 4.5) statusClass = 'near';
+    else if (remaining <= 8.5) statusClass = 'mid';
+    else statusClass = 'far';
+  }
+
+  const isOnCourt = player.onCourtStatus === OnCourtStatus.HIGH_CONFIDENCE;
+  const statusText = isOnCourt ? 'QUADRA' :
+    player.onCourtStatus === OnCourtStatus.ESTIMATED ? 'ESTIMADO' :
+    player.onCourtStatus === OnCourtStatus.DNP ? 'DNP' : 'BANCO';
+
+  return (
+    <tr className={isOnCourt ? 'active-row' : ''}>
+      <td className="name-cell">
+        {isOnCourt && <span className="live-dot"></span>}
+        <span className="p-number">#{player.player.jerseyNumber}</span>
+        <span className="p-name">{player.player.name}</span>
+        {player.isStarter && <span className="starter-star">★</span>}
+      </td>
+      <td className="val-cell bold">{player.points}</td>
+      <td className="val-cell">{line > 0 ? line : '—'}</td>
+      <td className={`val-cell remaining ${statusClass}`}>
+        {remaining !== null ? (remaining <= 0 ? '✅' : Math.ceil(remaining)) : '—'}
+      </td>
+      <td className="val-cell dim">{player.minutesPlayed}</td>
+      <td className="status-cell">
+        <span className={`status-pill ${player.onCourtStatus}`}>
+          {statusText}
+        </span>
+      </td>
+    </tr>
+  );
+});
 
 export default LiveView;
