@@ -41,9 +41,20 @@ function LiveView({ game }: LiveViewProps) {
   
   // Live props state
   const [liveProps, setLiveProps] = useState<Record<string, { line: number; over: number; under: number }>>({});
+  const [oddsTimer, setOddsTimer] = useState(30); // Countdown for odds update
   const prevPropsRef = useRef<Record<string, number>>({});
   const prevOnCourtRef = useRef<Record<string, OnCourtStatus>>({});
   const [notifications, setNotifications] = useState<LiveNotification[]>([]);
+
+  // Odds Countdown Effect
+  useEffect(() => {
+    if (game.status !== GameStatus.LIVE) return;
+    
+    const timer = setInterval(() => {
+      setOddsTimer(prev => (prev <= 1 ? 30 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [game.status]);
 
   // ─── Auto Live Mode + Game Context ──────────────────────────
   useEffect(() => {
@@ -166,6 +177,8 @@ function LiveView({ game }: LiveViewProps) {
       if (lineNotifications.length > 0) {
         setNotifications(prev => [...lineNotifications, ...prev].slice(0, 10));
       }
+
+      setOddsTimer(30); // Reset timer after fetch
     }
 
     fetchOnCourtProps();
@@ -225,6 +238,7 @@ function LiveView({ game }: LiveViewProps) {
           <div className="live-clock">{boxscore.period}Q • {boxscore.clock}</div>
           <div className="clinical-indicator">
             <span className="dot pulse"></span> CLINICAL ACTIVE
+            <span className="odds-timer-pill">LINHAS EM {oddsTimer}s</span>
           </div>
         </div>
 
