@@ -53,7 +53,7 @@ function GameLayout() {
   useEffect(() => {
     fetchGames();
 
-    // Auto-poll sidebar scores every 10s if there are live games
+    // Auto-poll sidebar scores every 1s if there are live games
     const interval = setInterval(async () => {
       try {
         const freshGames = await gameGateway.getGamesForDate(resolvedDate);
@@ -69,7 +69,7 @@ function GameLayout() {
       } catch (_) {
         // Silent fail — sidebar keeps showing stale data
       }
-    }, 10000);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [fetchGames, resolvedDate]);

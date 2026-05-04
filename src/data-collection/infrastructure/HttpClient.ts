@@ -185,8 +185,14 @@ export class HttpClient {
 
     try {
       const startTime = Date.now();
-      const response = await fetch(url, {
+      
+      // Cache busting to ensure we always get fresh data on 1s polling
+      const separator = url.includes('?') ? '&' : '?';
+      const cacheBustedUrl = `${url}${separator}_t=${Date.now()}`;
+      
+      const response = await fetch(cacheBustedUrl, {
         ...options,
+        cache: 'no-store',
         signal: controller.signal,
       });
 

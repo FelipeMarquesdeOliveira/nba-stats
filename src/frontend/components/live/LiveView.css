@@ -157,9 +157,10 @@
 }
 
 @keyframes scoreFlash {
-  0% { color: var(--live-green); text-shadow: 0 0 30px var(--live-green), 0 0 60px rgba(0, 200, 83, 0.3); transform: scale(1.15); }
-  30% { color: var(--live-green); text-shadow: 0 0 20px var(--live-green); transform: scale(1.05); }
-  100% { color: var(--text-primary); text-shadow: 0 0 20px rgba(255, 255, 255, 0.1); transform: scale(1); }
+  0% { transform: translateY(15px) scale(0.9); color: var(--live-green); text-shadow: 0 0 30px var(--live-green), 0 0 60px rgba(0, 200, 83, 0.3); }
+  40% { transform: translateY(-8px) scale(1.05); color: var(--live-green); text-shadow: 0 0 20px var(--live-green); }
+  70% { transform: translateY(4px) scale(1); color: var(--live-green); }
+  100% { transform: translateY(0) scale(1); color: var(--text-primary); text-shadow: 0 0 20px rgba(255, 255, 255, 0.1); }
 }
 
 /* Plays Ticker */

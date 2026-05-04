@@ -35,7 +35,7 @@ export interface CacheStats {
 }
 
 const DEFAULT_CONFIGS: Record<string, CacheConfig> = {
-  games: { ttlMs: 30_000, staleMs: 60_000, maxAgeMs: 300_000 },
+  games: { ttlMs: 800, staleMs: 60_000, maxAgeMs: 300_000 },
   'boxscore:live': { ttlMs: 800, staleMs: 5_000, maxAgeMs: 30_000 },
   'boxscore:final': { ttlMs: 300_000, staleMs: 900_000, maxAgeMs: 1_800_000 },
   injuries: { ttlMs: 300_000, staleMs: 900_000, maxAgeMs: 1_800_000 },
