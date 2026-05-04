@@ -40,6 +40,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
 }
 
 .live-badge-pulse {
@@ -73,6 +74,9 @@
   color: var(--text-primary);
   font-size: 1.1rem;
   letter-spacing: 1px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .clinical-indicator {
@@ -281,7 +285,7 @@
   font-weight: 900;
 }
 
-/* ─── Modern Table (Fixed Columns) ─────────────────────────────── */
+/* ─── Modern Table ─────────────────────────────── */
 .table-responsive {
   overflow-x: auto;
 }
@@ -289,57 +293,39 @@
 .modern-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
 }
-
-/* Column widths - fixed layout for alignment */
-.modern-table th:nth-child(1),
-.modern-table td:nth-child(1) { width: 40%; text-align: left; }  /* PLAYER */
-.modern-table th:nth-child(2),
-.modern-table td:nth-child(2) { width: 8%; }   /* PTS */
-.modern-table th:nth-child(3),
-.modern-table td:nth-child(3) { width: 10%; }  /* LINHA */
-.modern-table th:nth-child(4),
-.modern-table td:nth-child(4) { width: 10%; }  /* FALTAM */
-.modern-table th:nth-child(5),
-.modern-table td:nth-child(5) { width: 8%; }   /* MIN */
-.modern-table th:nth-child(6),
-.modern-table td:nth-child(6) { width: 14%; }  /* STATUS */
 
 .modern-table th {
-  padding: 0.75rem 0.4rem;
+  text-align: left;
+  padding: 1rem 0.5rem;
   color: var(--text-muted);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   font-size: 0.65rem;
-  letter-spacing: 1px;
-  text-align: center;
-  white-space: nowrap;
+  letter-spacing: 1.5px;
   border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
 }
 
-.modern-table th:first-child {
-  text-align: left;
-  padding-left: 0.75rem;
+.modern-table th:not(:first-child) {
+  text-align: center;
 }
 
 .modern-table td {
-  padding: 0.6rem 0.4rem;
+  padding: 1rem 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  text-align: center;
+  font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.modern-table td:first-child {
-  text-align: left;
-  padding-left: 0.75rem;
+.modern-table td:not(:first-child) {
+  text-align: center;
 }
 
-.modern-table tr:last-child td {
-  border-bottom: none;
+.modern-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .modern-table tr.active-row {
@@ -354,42 +340,35 @@
 .name-cell {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  overflow: hidden;
+  gap: 0.75rem;
 }
 
 .p-name {
   color: var(--text-primary);
   font-weight: 600;
-  font-size: 0.85rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .p-number {
   color: var(--text-muted);
   font-family: 'Sora', sans-serif;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  opacity: 0.5;
-  flex-shrink: 0;
+  opacity: 0.6;
 }
 
 .starter-star {
-  font-size: 0.6rem;
+  font-size: 0.8rem;
   color: var(--live-yellow);
-  opacity: 0.7;
-  flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .live-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   background: var(--live-blue);
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--live-blue);
-  flex-shrink: 0;
+  box-shadow: 0 0 8px var(--live-blue);
 }
 
 .val-cell {

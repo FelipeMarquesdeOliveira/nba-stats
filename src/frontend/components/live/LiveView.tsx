@@ -254,8 +254,8 @@ function LiveView({ game }: LiveViewProps) {
           </div>
           <div className="score-divider">VS</div>
           <div className="team-score-block">
-            <span className={`score-value ${homeScoreFlash ? 'score-flash' : ''}`}>{boxscore.homeScore}</span>
             <span className="team-abbr">{game.homeTeam.abbreviation}</span>
+            <span className={`score-value ${homeScoreFlash ? 'score-flash' : ''}`}>{boxscore.homeScore}</span>
           </div>
         </div>
         
